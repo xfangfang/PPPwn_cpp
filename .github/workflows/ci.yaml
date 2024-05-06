@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-windows-gnu, ext: ".exe", cmake: "-DPacket_ROOT=/tmp/sdk" }
+          - { target: aarch64-linux-musl }
+          - { target: x86_64-linux-musl  }
+          - { target: mipsel-linux-musl  }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download NPCAP SDK
+        if: matrix.target == 'x86_64-windows-gnu'
+        run: |
+          mkdir -p /tmp/sdk
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk/npcap-sdk.zip
+          unzip /tmp/sdk/npcap-sdk.zip -d /tmp/sdk
+
+      - name: Build executable
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DZIG_TARGET=${{ matrix.target }} -DUSE_SYSTEM_PCAP=OFF ${{ matrix.cmake }}
+          cmake --build build
+          tar -czvf pppwn.tar.gz build/pppwn${{ matrix.ext }}
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: pppwn.tar.gz
