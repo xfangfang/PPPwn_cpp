@@ -1,5 +1,4 @@
 #!/bin/sh
-@ZIG@ rc "$@"
 
 shift $(($#-2))
 rc=$2

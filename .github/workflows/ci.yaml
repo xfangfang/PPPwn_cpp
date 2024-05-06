@@ -27,8 +27,9 @@ jobs:
 
       - name: Build executable
         run: |
+          sudo rm -rf /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DZIG_TARGET=${{ matrix.target }} -DUSE_SYSTEM_PCAP=OFF ${{ matrix.cmake }}
-          cmake --build build
+          cmake --build build -t pppwn
           tar -czvf pppwn.tar.gz build/pppwn${{ matrix.ext }}
 
       - name: Upload result
