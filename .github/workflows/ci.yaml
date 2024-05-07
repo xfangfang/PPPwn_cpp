@@ -18,18 +18,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
       - name: Download NPCAP SDK
         if: matrix.target == 'x86_64-windows-gnu'
         run: |
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
-          mv /tmp/sdk/Lib /tmp/sdk/lib
+          mkdir -p /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
 
       - name: Build executable
         run: |
           sudo rm -rf /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DZIG_TARGET=${{ matrix.target }} -DUSE_SYSTEM_PCAP=OFF ${{ matrix.cmake }}
-          cmake --build build -t pppwn
+          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DZIG_TARGET=${{ matrix.target }} -DUSE_SYSTEM_PCAP=OFF ${{ matrix.cmake }}
+          cmake --build build -t pppwn -- -j$(nproc)
+          sudo apt-get install llvm --no-install-recommends
+          llvm-strip build/pppwn${{ matrix.ext }}
+          upx --lzma build/pppwn${{ matrix.ext }}
           tar -czvf pppwn.tar.gz build/pppwn${{ matrix.ext }}
 
       - name: Upload result

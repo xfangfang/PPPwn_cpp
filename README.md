@@ -2,10 +2,11 @@
 
 This is the C++ rewrite of [PPPwn](https://github.com/TheOfficialFloW/PPPwn), intended to run on small devices such as routers.
 
-The failure rate in the first two stages is very high. I think it may be due to the different execution speeds between c++ and py.
+The failure rate in the first two stages is very high. I think it may be due to the different execution speeds between c++ and python.
 Therefore, some parameters need to be adjusted. So I decided to upload the code here first and wait for someone to improve it.
 At the same time, I will continued to complete the other stages.
 
+[nightly.link](https://nightly.link/xfangfang/PPPwn_cpp/workflows/ci.yaml/main?status=completed)
 
 # Development
 
