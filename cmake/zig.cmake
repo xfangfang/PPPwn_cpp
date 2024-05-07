@@ -76,10 +76,10 @@ message(STATUS "ZIG_TARGET: ${ZIG_TARGET}")
 message(STATUS "OS: ${ZIG_TARGET_OS}")
 message(STATUS "ARCH: ${ZIG_TARGET_ARCH}")
 
-message(STATUS "CMAKE_OSX_SYSROOT: ${CMAKE_OSX_SYSROOT}")
 if (ZIG_TARGET_OS STREQUAL "Darwin")
     cmake_minimum_required(VERSION 3.14)
     include(FetchContent)
+    message(STATUS "CMAKE_OSX_SYSROOT: ${CMAKE_OSX_SYSROOT}")
     set(MACOS_SDK "${CMAKE_BINARY_DIR}/vendor/macos_sdk")
     FetchContent_Populate(
         vendor_macos_sdk

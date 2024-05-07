@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
+          - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
+          - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe"}
+          - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF" }
+          - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF" }
+          - { target: mipsel-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF" }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install UPX
+        if: matrix.os == 'ubuntu-latest'
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
+      - name: Install Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install llvm --no-install-recommends
+
+      - name: Download NPCAP SDK
+        if: matrix.target == 'x86_64-windows-gnu'
+        run: |
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
+          unzip /tmp/sdk.zip -d /tmp/sdk
+          mkdir -p /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
+
+      - name: Build executable
+        run: |
+          sudo rm -rf /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc
+          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DZIG_TARGET=${{ matrix.target }} ${{ matrix.cmake }}
+          cmake --build build -t pppwn -- -j$(nproc)
+          ${{ matrix.strip }} build/pppwn${{ matrix.ext }}
+          ${{ matrix.upx }} build/pppwn${{ matrix.ext }}
+          cd build && tar -czvf pppwn.tar.gz pppwn${{ matrix.ext }}
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: build/pppwn.tar.gz
