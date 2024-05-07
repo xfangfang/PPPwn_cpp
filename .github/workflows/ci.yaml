@@ -21,9 +21,9 @@ jobs:
       - name: Download NPCAP SDK
         if: matrix.target == 'x86_64-windows-gnu'
         run: |
-          mkdir -p /tmp/sdk
-          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk/npcap-sdk.zip
-          unzip /tmp/sdk/npcap-sdk.zip -d /tmp/sdk
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
+          unzip /tmp/sdk.zip -d /tmp/sdk
+          mv /tmp/sdk/Lib /tmp/sdk/lib
 
       - name: Build executable
         run: |
