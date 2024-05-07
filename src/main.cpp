@@ -888,11 +888,12 @@ int main(int argc, char *argv[]) {
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
     std::cout << "[+] args: <interface>" << std::endl;
 
-    std::cout << "[+] interfaces: ";
+    std::cout << "[+] interfaces: " << std::endl;
     std::vector<pcpp::PcapLiveDevice*> devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
     for (pcpp::PcapLiveDevice* dev : devList) {
         std::cout << dev->getName() << " " << dev->getDesc() << std::endl;
     }
+    std::cout << std::endl;
 
     // todo: add argument parsing
     std::string interfaceName;
@@ -905,23 +906,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef _WIN32
     // todo run LcpEchoHandler
-//    STARTUPINFO si;
-//    PROCESS_INFORMATION pi;
-//
-//    ZeroMemory(&si, sizeof(si));
-//    si.cb = sizeof(si);
-//    ZeroMemory(&pi, sizeof(pi));
-//
-//    if (!CreateProcess(NULL, argv[0], NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-//        std::cerr << "[-] Cannot run LcpEchoHandler" << std::endl;
-//    }
-
     Exploit exploit(OffsetsFirmware_900(), interfaceName);
     exploit.run();
-
-//    TerminateProcess(pi.hProcess, 0);
-//    CloseHandle(pi.hProcess);
-//    CloseHandle(pi.hThread);
 #else
     pid_t pid = fork();
     if (pid < 0) {
