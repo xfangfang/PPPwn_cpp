@@ -14,8 +14,6 @@ At the same time, I will continue to complete the other stages.
 
 You can download the latest build from [nightly.link](https://nightly.link/xfangfang/PPPwn_cpp/workflows/ci.yaml/main?status=completed).
 
-[nightly.link](https://nightly.link/xfangfang/PPPwn_cpp/workflows/ci.yaml/main?status=completed)
-
 For Windows users, you need to install [npcap](https://npcap.com) before run this program.
 
 # Development
