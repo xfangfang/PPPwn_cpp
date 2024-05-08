@@ -480,7 +480,6 @@ public:
         }
 
         memcpy(&pppoe_softc, host_uniq, sizeof(pppoe_softc));
-        pppoe_softc = be64toh(pppoe_softc);
         std::cout << "[+] pppoe_softc: 0x" << std::hex << pppoe_softc << std::endl;
 
         auto *ethLayer = pkt.packet.getLayerOfType<pcpp::EthLayer>();
