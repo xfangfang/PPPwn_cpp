@@ -31,15 +31,15 @@ but you can also let cmake automatically compile pcap by using `-DUSE_SYSTEM_PCA
 ```shell
 # native build
 cmake -B build
-cmake --build build
+cmake --build build pppwn
 
 # cross compile for mipsel linux
 cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF
-cmake --build build
+cmake --build build pppwn
 
 # cross compile for Windows
 cmake -B build -DZIG_TARGET=x86_64-windows-gnu -DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=<path to npcap sdk>
-cmake --build build
+cmake --build build pppwn
 ```
 
 # progress

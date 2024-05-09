@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 include(CMakeDependentOption)
 set(APP_BUILD_OPTIONS)
-set(APP_LINK_OPTIONS)
 set(APP_LINK_LIB)
-set(APP_INCLUDE_DIRS)
 
 # Zig makes cross-compiling easier and ignores glibc version issue
 # target can be: x86_64-macos-none, x86_64-macos.11.0-none, x86_64-windows-gnu, mipsel-linux-musl, x86_64-linux-gnu.2.17, ...
@@ -18,13 +16,16 @@ option(ZIG_NIGHTLY "Download nightly build instead of release version if zig is 
 option(USE_SYSTEM_PCAPPLUSPLUS "Find pcapp++ from system path" OFF)
 cmake_dependent_option(USE_SYSTEM_PCAP "Find pcap from system path" ON "NOT USE_SYSTEM_PCAPPLUSPLUS" ON)
 
+option(BUILD_CLI "build command line tool" ON)
+option(BUILD_TEST "build test" OFF)
+
 if (ZIG_TARGET)
     include(${CMAKE_SOURCE_DIR}/cmake/zig.cmake)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/zig.toolchain.cmake")
     add_compile_options(--target=${ZIG_TARGET})
     if(ZIG_TARGET_ARCH MATCHES "mips")
         add_compile_options(-msoft-float)
-        list(APPEND APP_LINK_OPTIONS -msoft-float)
+        add_link_options(-msoft-float)
     endif ()
 endif ()
 
@@ -85,8 +86,17 @@ else ()
     list(APPEND APP_LINK_LIB Pcap++)
 endif ()
 
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_include_directories(${PROJECT_NAME} PRIVATE include ${APP_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${APP_LINK_LIB})
-target_compile_options(${PROJECT_NAME} PRIVATE ${APP_BUILD_OPTIONS})
-target_link_options(${PROJECT_NAME} PRIVATE ${APP_LINK_OPTIONS})
+add_library(${PROJECT_NAME}_static STATIC src/exploit.cpp src/packet.cpp)
+set_target_properties(${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}_static PUBLIC ${APP_LINK_LIB})
+target_compile_options(${PROJECT_NAME}_static PUBLIC ${APP_BUILD_OPTIONS})
+target_include_directories(${PROJECT_NAME}_static PUBLIC include)
+
+if (BUILD_CLI)
+    add_executable(${PROJECT_NAME} src/main.cpp)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+endif ()
+
+if (BUILD_TEST)
+    add_subdirectory(tests)
+endif ()

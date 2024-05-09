@@ -2,6 +2,10 @@
 
 #include <cstdint>
 
+enum FirmwareVersion {
+    FIRMWARE_900 = 900,
+};
+
 class OffsetsFirmware {
 public:
     uint64_t PPPOE_SOFTC_LIST;
