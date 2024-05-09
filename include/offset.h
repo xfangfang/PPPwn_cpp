@@ -3,7 +3,16 @@
 #include <cstdint>
 
 enum FirmwareVersion {
-    FIRMWARE_900 = 900,
+    FIRMWARE_750_755 = 0,
+    FIRMWARE_800_803,
+    FIRMWARE_850_852,
+    FIRMWARE_900,
+    FIRMWARE_903_904,
+    FIRMWARE_950_960,
+    FIRMWARE_1000_1001,
+    FIRMWARE_1050_1071,
+    FIRMWARE_1100,
+    FIRMWARE_UNKNOWN,
 };
 
 class OffsetsFirmware {
