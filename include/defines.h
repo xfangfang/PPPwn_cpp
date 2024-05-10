@@ -5,12 +5,6 @@
 #define PPPOE_TAG_HUNIQUE 0x0103
 #define PPPOE_TAG_ACOOKIE 0x0104
 
-//#define PPPOE_CODE_PADI 0x09
-//#define PPPOE_CODE_PADO 0x07
-//#define PPPOE_CODE_PADR 0x19
-//#define PPPOE_CODE_PADS 0x65
-//#define PPPOE_CODE_PADT 0xa7
-
 #define ETHERTYPE_PPPOEDISC 0x8863
 #define ETHERTYPE_PPPOE 0x8864
 
@@ -20,6 +14,7 @@
 #define CONF_ACK 2
 #define CONF_NAK 3
 #define CONF_REJ 4
+#define CONF_TEM 5
 #define ECHO_REQ 9
 #define ECHO_REPLY 10
 

