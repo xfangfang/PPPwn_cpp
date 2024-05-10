@@ -6,9 +6,13 @@ This is the C++ rewrite of [PPPwn](https://github.com/TheOfficialFloW/PPPwn), in
 >
 > This project is still work in progress and is currently not suitable for daily use.
 
-The failure rate in the first two stages is very high. I think it may be due to the different execution speeds between c++ and python.
-Therefore, some parameters need to be adjusted. So I decided to upload the code here first and wait for someone to improve it.
-At the same time, I will continue to complete the other stages.
+To avoid mistakes, I wrote some test code to ensure that the packet sent by the c++ version 
+is the same as the packet sent by the python version, these tests are in the `tests` directory.
+
+But in actual operation, the failure rate of the c++ version is very high (stopping at stage1),
+I think this may be due to the different execution speeds of c++ and python.
+
+Welcome any developers who are interested to improve this project together.
 
 # Nightly build
 
@@ -46,12 +50,13 @@ cmake -B build -DZIG_TARGET=x86_64-windows-gnu -DUSE_SYSTEM_PCAP=OFF -DPacket_RO
 cmake --build build pppwn
 ```
 
-# progress
+# Progress
+
 - [x] Stage 0
 - [x] Stage 1
 - [x] Stage 2
-- [ ] Stage 3
-- [ ] Stage 4
+- [x] Stage 3
+- [x] Stage 4
 
 Big thanks to FloW's magical work, you are my hero.
 
