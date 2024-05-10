@@ -147,8 +147,9 @@ int main(int argc, char *argv[]) {
         signal(SIGPIPE, SIG_IGN);
         signal(SIGINT, signal_handler);
         signal(SIGTERM, signal_handler);
+        signal(SIGKILL, signal_handler);
         startExploit(interface, offset, stage1, stage2);
-        kill(pid, SIGTERM);
+        kill(pid, SIGKILL);
     }
 #endif
     return 0;
