@@ -21,7 +21,7 @@ You can download the latest build from [nightly.link](https://nightly.link/xfang
 For Windows users, you need to install [npcap](https://npcap.com) before run this program.
 
 ```shell
-pppwn --interface en6 --fw 1100 --stage1 <stage1.bin> stage2 <stage2.bin>
+pppwn --interface en6 --fw 1100 --stage1 <stage1.bin> --stage2 <stage2.bin>
 ```
 
 # Development
