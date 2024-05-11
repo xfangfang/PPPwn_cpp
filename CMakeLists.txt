@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 include(CMakeDependentOption)
 set(APP_BUILD_OPTIONS)
 set(APP_LINK_LIB)
+set(CLI_LINK_LIB)
 
 # Zig makes cross-compiling easier and ignores glibc version issue
 # target can be: x86_64-macos-none, x86_64-macos.11.0-none, x86_64-windows-gnu, mipsel-linux-musl, x86_64-linux-gnu.2.17, ...
@@ -41,6 +42,7 @@ if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     add_compile_definitions(-D_Post_invalid_=) # Fix incompatibility with old npcap
     add_compile_options("-Wno-macro-redefined" "-Wno-implicit-function-declaration")
+    list(APPEND CLI_LINK_LIB winmm)
 endif ()
 
 if (USE_SYSTEM_PCAPPLUSPLUS)
@@ -94,7 +96,7 @@ target_include_directories(${PROJECT_NAME}_static PUBLIC include)
 
 if (BUILD_CLI)
     add_executable(${PROJECT_NAME} src/main.cpp)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static ${CLI_LINK_LIB})
 endif ()
 
 if (BUILD_TEST)

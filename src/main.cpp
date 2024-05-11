@@ -9,9 +9,15 @@
 #include "exploit.h"
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+
+#include <windows.h>
+#include <mmsystem.h>
+
 void cleanup(int ret) {
     exit(ret);
 }
+
 #else
 
 #include <csignal>
@@ -135,7 +141,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef _WIN32
     // todo run LcpEchoHandler
+    timeBeginPeriod(1);
     startExploit(interface, offset, stage1, stage2);
+    timeEndPeriod(1);
 #else
     pid = fork();
     if (pid < 0) {
