@@ -31,8 +31,8 @@ pppwn --interface en0 --fw 1100 --stage1 "stage1.bin" --stage2 "stage2.bin" --au
 
 # Development
 
-This project depends on [pcap](https://github.com/the-tcpdump-group/libpcap), which will be searched for in the system path by default, 
-but you can also let cmake automatically compile pcap by using `-DUSE_SYSTEM_PCAP=OFF`.
+This project depends on [pcap](https://github.com/the-tcpdump-group/libpcap), cmake will search for it in the system path by default.
+You can also add cmake option `-DUSE_SYSTEM_PCAP=OFF` to compile pcap together (can be used when cross-compiling).
 
 ```shell
 # native build (macOS, Linux, mingw)
@@ -43,8 +43,8 @@ cmake --build build pppwn
 cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-msoft-float"
 cmake --build build pppwn
 
-# cross compile for armv7 cortex-a9 linux
-cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-march=armv7;-mcpu=cortex_a9"
+# cross compile for arm linux (armv7 cortex-a9)
+cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-mcpu=cortex_a9"
 cmake --build build pppwn
 
 # cross compile for Windows

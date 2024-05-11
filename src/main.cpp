@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
-              << " retry=" << retry << std::endl;
+              << " auto-retry=" << (retry ? "on" : "off") << std::endl;
 
 #ifdef _WIN32
     // todo run LcpEchoHandler
