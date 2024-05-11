@@ -16,7 +16,7 @@ jobs:
           - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe"}
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF" }
-          - { target: arm-linux-musleabi",os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-march=armv7;-mcpu=cortex_a9'" }
+          - { target: arm-linux-musleabi, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-march=armv7;-mcpu=cortex_a9'" }
           - { target: mipsel-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma", cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-msoft-float'" }
     steps:
       - uses: actions/checkout@v4
