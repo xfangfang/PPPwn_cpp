@@ -57,7 +57,8 @@ std::vector<uint8_t> readBinary(const std::string &filename) {
 }
 
 void startExploit(const std::string &interface, enum FirmwareVersion fw,
-                  const std::string &stage1, const std::string &stage2) {
+                  const std::string &stage1, const std::string &stage2,
+                  bool retry) {
     Exploit exploit;
     if (exploit.setFirmwareVersion(fw)) cleanup(1);
     if (exploit.setInterface(interface)) cleanup(1);
@@ -67,6 +68,7 @@ void startExploit(const std::string &interface, enum FirmwareVersion fw,
     if (stage2_data.empty()) cleanup(1);
     exploit.setStage1(std::move(stage1_data));
     exploit.setStage2(std::move(stage2_data));
+    exploit.setAutoRetry(retry);
     exploit.run();
 }
 
@@ -112,6 +114,7 @@ int main(int argc, char *argv[]) {
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
     std::string interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
     int fw = 1100;
+    bool retry = false;
 
     auto cli = (
             (required("--interface").doc("network interface") & value("interface", interface),
@@ -119,7 +122,8 @@ int main(int argc, char *argv[]) {
                             "{750,751,755,800,801,803,850,852,900,903,904,950,951,960,1000,1001,1050,1070,1071,1100}") &
                     integer("fw", fw),
                     option("--stage1").doc("stage1 binary") & value("STAGE1", stage1),
-                    option("--stage2").doc("stage2 binary") & value("STAGE2", stage2)
+                    option("--stage2").doc("stage2 binary") & value("STAGE2", stage2),
+                    option("-a", "--auto-retry").doc("automatically retry when fails").set(retry)
             ) | command("list").doc("list interfaces").call(listInterfaces)
     );
 
@@ -137,12 +141,12 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
-              << std::endl;
+              << " retry=" << retry << std::endl;
 
 #ifdef _WIN32
     // todo run LcpEchoHandler
     timeBeginPeriod(1);
-    startExploit(interface, offset, stage1, stage2);
+    startExploit(interface, offset, stage1, stage2, retry);
     timeEndPeriod(1);
 #else
     pid = fork();
@@ -156,7 +160,7 @@ int main(int argc, char *argv[]) {
         signal(SIGINT, signal_handler);
         signal(SIGTERM, signal_handler);
         signal(SIGKILL, signal_handler);
-        startExploit(interface, offset, stage1, stage2);
+        startExploit(interface, offset, stage1, stage2, retry);
         kill(pid, SIGKILL);
     }
 #endif
