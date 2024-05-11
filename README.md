@@ -39,8 +39,12 @@ but you can also let cmake automatically compile pcap by using `-DUSE_SYSTEM_PCA
 cmake -B build
 cmake --build build pppwn
 
-# cross compile for mipsel linux
-cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF
+# cross compile for mipsel linux (soft float)
+cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-msoft-float"
+cmake --build build pppwn
+
+# cross compile for armv7 cortex-a9 linux
+cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-march=armv7;-mcpu=cortex_a9"
 cmake --build build pppwn
 
 # cross compile for Windows
