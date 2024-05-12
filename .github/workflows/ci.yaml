@@ -20,7 +20,7 @@ jobs:
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: arm-linux-musleabi, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-mcpu=cortex_a9'", name: "(cortex_a9)" }
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-mcpu=cortex_a7'", name: "(cortex_a7)" }
           - { target: arm-linux-musleabi, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-mcpu=arm1176jzf_s'", name: "(pi_zero_w)" }
           - { target: mipsel-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
