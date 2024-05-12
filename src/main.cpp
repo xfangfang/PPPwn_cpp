@@ -83,6 +83,9 @@ void listInterfaces() {
 
 enum FirmwareVersion getFirmwareOffset(int fw) {
     std::unordered_map<int, enum FirmwareVersion> fw_choices = {
+            {700,  FIRMWARE_700_702},
+            {701,  FIRMWARE_700_702},
+            {702,  FIRMWARE_700_702},
             {750,  FIRMWARE_750_755},
             {750,  FIRMWARE_750_755},
             {751,  FIRMWARE_750_755},
@@ -109,6 +112,8 @@ enum FirmwareVersion getFirmwareOffset(int fw) {
     return fw_choices[fw];
 }
 
+#define SUPPORTED_FIRMWARE "{700,701,702,750,751,755,800,801,803,850,852,900,903,904,950,951,960,1000,1001,1050,1070,1071,1100}"
+
 int main(int argc, char *argv[]) {
     using namespace clipp;
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
@@ -117,14 +122,13 @@ int main(int argc, char *argv[]) {
     bool retry = false;
 
     auto cli = (
-            (required("--interface").doc("network interface") & value("interface", interface),
-                    option("--fw").doc(
-                            "{750,751,755,800,801,803,850,852,900,903,904,950,951,960,1000,1001,1050,1070,1071,1100}") &
-                    integer("fw", fw),
-                    option("--stage1").doc("stage1 binary") & value("STAGE1", stage1),
-                    option("--stage2").doc("stage2 binary") & value("STAGE2", stage2),
-                    option("-a", "--auto-retry").doc("automatically retry when fails").set(retry)
-            ) | command("list").doc("list interfaces").call(listInterfaces)
+            ("network interface" % required("--interface") & value("interface", interface), \
+            SUPPORTED_FIRMWARE % option("--fw") & integer("fw", fw), \
+            "stage1 binary" % option("--stage1") & value("STAGE1", stage1), \
+            "stage2 binary" % option("--stage2") & value("STAGE2", stage2), \
+            "automatically retry when fails" % option("-a", "--auto-retry").set(retry)
+            ) | \
+            "list interfaces" % command("list").call(listInterfaces)
     );
 
     auto result = parse(argc, argv, cli);
