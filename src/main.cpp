@@ -56,7 +56,7 @@ std::vector<uint8_t> readBinary(const std::string &filename) {
     return buffer;
 }
 
-void startExploit(const std::string &interface, enum FirmwareVersion fw,
+int startExploit(const std::string &interface, enum FirmwareVersion fw,
                   const std::string &stage1, const std::string &stage2,
                   bool retry) {
     Exploit exploit;
@@ -69,7 +69,7 @@ void startExploit(const std::string &interface, enum FirmwareVersion fw,
     exploit.setStage1(std::move(stage1_data));
     exploit.setStage2(std::move(stage2_data));
     exploit.setAutoRetry(retry);
-    exploit.run();
+    return exploit.run();
 }
 
 void listInterfaces() {
@@ -143,10 +143,11 @@ int main(int argc, char *argv[]) {
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
               << " auto-retry=" << (retry ? "on" : "off") << std::endl;
 
+    int ret = 0;
 #ifdef _WIN32
     // todo run LcpEchoHandler
     timeBeginPeriod(1);
-    startExploit(interface, offset, stage1, stage2, retry);
+    ret = startExploit(interface, offset, stage1, stage2, retry);
     timeEndPeriod(1);
 #else
     pid = fork();
@@ -160,9 +161,9 @@ int main(int argc, char *argv[]) {
         signal(SIGINT, signal_handler);
         signal(SIGTERM, signal_handler);
         signal(SIGKILL, signal_handler);
-        startExploit(interface, offset, stage1, stage2, retry);
+        ret = startExploit(interface, offset, stage1, stage2, retry);
         kill(pid, SIGKILL);
     }
 #endif
-    return 0;
+    return ret;
 }
