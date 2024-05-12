@@ -16,7 +16,7 @@ You can download the latest build from [nightly.link](https://nightly.link/xfang
 
 For Windows users, you need to install [npcap](https://npcap.com) before run this program.
 
-For macOS users, you need run `sudo xattr -rd com.apple.quarantine <path-to-pppwn>` after download.
+For macOS users, you need to run `sudo xattr -rd com.apple.quarantine <path-to-pppwn>` after download.
 
 ```shell
 # show help
@@ -32,7 +32,7 @@ pppwn --interface en0 --fw 1100 --stage1 "stage1.bin" --stage2 "stage2.bin" --au
 # Development
 
 This project depends on [pcap](https://github.com/the-tcpdump-group/libpcap), cmake will search for it in the system path by default.
-You can also add cmake option `-DUSE_SYSTEM_PCAP=OFF` to compile pcap together (can be used when cross-compiling).
+You can also add cmake option `-DUSE_SYSTEM_PCAP=OFF` to compile pcap from source (can be used when cross-compiling).
 
 ```shell
 # native build (macOS, Linux, mingw)
