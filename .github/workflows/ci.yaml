@@ -14,7 +14,7 @@ jobs:
         run: |
           echo "Git commit: $(git rev-parse HEAD)" > build_info.txt
           echo "Build time: $(date)" >> build_info.txt
-          echo "BUILD_TIME=$(data)" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date)" >> $GITHUB_OUTPUT
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +69,7 @@ jobs:
           path: build/pppwn.tar.gz
 
   build-windows:
-    name: "${{ matrix.target }}-windows-gnu"
+    name: "${{ matrix.arch }}-windows-gnu"
     runs-on: windows-2019
     strategy:
       fail-fast: false
@@ -104,5 +104,5 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-windows-gnu
+          name: ${{ matrix.arch }}-windows-gnu
           path:  build/pppwn.exe
