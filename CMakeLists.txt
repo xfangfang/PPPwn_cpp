@@ -56,8 +56,6 @@ else ()
         set(BUILD_SHARED_LIBS ON)
         # Fix zig cross-compiling issue
         set(CMAKE_USE_PTHREADS_INIT ON)
-
-        list(APPEND CLI_LINK_LIB ws2_32)
     elseif (NOT USE_SYSTEM_PCAP)
         include(FetchContent)
         set(DISABLE_DBUS ON)

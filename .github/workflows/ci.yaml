@@ -14,7 +14,7 @@ jobs:
         run: |
           echo "Git commit: $(git rev-parse HEAD)" > build_info.txt
           echo "Build time: $(date)" >> build_info.txt
-          echo "BUILD_TIME=$(date)" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date +"%Y%m%d_%H-%M-%S")" >> $GITHUB_OUTPUT
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
@@ -30,6 +30,8 @@ jobs:
         include:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
+          - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe", name: "(ucrt)" }
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -53,6 +55,15 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install llvm --no-install-recommends
 
+      - name: Download NPCAP SDK
+        if: matrix.target == 'x86_64-windows-gnu'
+        run: |
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
+          unzip /tmp/sdk.zip -d /tmp/sdk
+          mkdir -p /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
+
       - name: Build executable
         run: |
           sudo rm -rf /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc
@@ -69,7 +80,7 @@ jobs:
           path: build/pppwn.tar.gz
 
   build-windows:
-    name: "${{ matrix.arch }}-windows-gnu"
+    name: "${{ matrix.arch }}-windows-gnu(msvcrt)"
     runs-on: windows-2019
     strategy:
       fail-fast: false
