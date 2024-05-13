@@ -42,7 +42,6 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     add_compile_definitions(-D_Post_invalid_=) # Fix incompatibility with old npcap
-    add_compile_options("-Wno-macro-redefined" "-Wno-implicit-function-declaration")
     list(APPEND CLI_LINK_LIB winmm)
 endif ()
 
@@ -75,6 +74,7 @@ else ()
         target_link_libraries(PCAP::PCAP INTERFACE pcap_static)
         target_include_directories(PCAP::PCAP INTERFACE "${PCAP_INCLUDE_DIR}")
         target_compile_definitions(PCAP::PCAP INTERFACE "_BSD_SOURCE" "_DEFAULT_SOURCE")
+        target_compile_options(pcap_static PRIVATE "-Wno-macro-redefined" "-Wno-implicit-function-declaration")
         set(PCAP_NEEDS_THREADS ON)
         set(HAVE_PCAP_IMMEDIATE_MODE ON)
         set(HAVE_PCAP_DIRECTION ON)
@@ -86,6 +86,7 @@ else ()
     FetchContent_Declare(PcapPlusPlus GIT_REPOSITORY https://github.com/seladb/PcapPlusPlus.git
             GIT_TAG v23.09)
     FetchContent_MakeAvailable(PcapPlusPlus)
+    set_property(TARGET Packet++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     list(APPEND APP_LINK_LIB Pcap++)
 endif ()
 
