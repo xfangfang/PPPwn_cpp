@@ -14,7 +14,7 @@ jobs:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
           - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe"}
+              cmake: "-DPCAP_ROOT=/tmp/sdk", ext: ".exe"}
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=`pwd`/sdk
+          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DPCAP_ROOT=`pwd`/sdk
           cmake --build build -t pppwn
           upx -lzma build/pppwn.exe
 

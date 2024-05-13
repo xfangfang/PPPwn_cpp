@@ -51,13 +51,14 @@ if (USE_SYSTEM_PCAPPLUSPLUS)
 else ()
     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
     set(BUILD_SHARED_LIBS OFF)
-    if(NOT USE_SYSTEM_PCAP)
-        if (MINGW)
-            # Fix a pcap CMakeLists bug
-            set(BUILD_SHARED_LIBS ON)
-            # Fix zig cross-compiling issue
-            set(CMAKE_USE_PTHREADS_INIT ON)
-        endif ()
+    if (MINGW)
+        # Fix a pcap CMakeLists bug
+        set(BUILD_SHARED_LIBS ON)
+        # Fix zig cross-compiling issue
+        set(CMAKE_USE_PTHREADS_INIT ON)
+
+        list(APPEND CLI_LINK_LIB ws2_32)
+    elseif (NOT USE_SYSTEM_PCAP)
         include(FetchContent)
         set(DISABLE_DBUS ON)
         set(DISABLE_RDMA ON)
@@ -89,9 +90,6 @@ else ()
     set_property(TARGET Packet++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Pcap++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Common++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
-    if (MINGW)
-        list(APPEND CLI_LINK_LIB ${Packet_LIBRARY} ws2_32)
-    endif ()
     list(APPEND APP_LINK_LIB Pcap++)
 endif ()
 
