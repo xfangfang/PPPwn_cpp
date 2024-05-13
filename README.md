@@ -43,8 +43,8 @@ cmake --build build pppwn
 cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-msoft-float"
 cmake --build build pppwn
 
-# cross compile for arm linux (armv7 cortex-a9)
-cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-mcpu=cortex_a9"
+# cross compile for arm linux (armv7 cortex-a7)
+cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-mcpu=cortex_a7"
 cmake --build build pppwn
 
 # cross compile for Windows
