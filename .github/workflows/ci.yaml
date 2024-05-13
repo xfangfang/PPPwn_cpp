@@ -80,7 +80,7 @@ jobs:
           path: build/pppwn.tar.gz
 
   build-windows:
-    name: "${{ matrix.arch }}-windows-gnu(msvcrt)"
+    name: "${{ matrix.arch }}-windows-gnu"
     runs-on: windows-2019
     strategy:
       fail-fast: false
