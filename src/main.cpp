@@ -103,6 +103,7 @@ void listInterfaces() {
 #else
     std::vector<pcpp::PcapLiveDevice *> devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
     for (pcpp::PcapLiveDevice *dev: devList) {
+        if (dev->getLoopback()) continue;
         std::cout << "\t" << dev->getName() << " " << dev->getDesc() << std::endl;
     }
 #endif
