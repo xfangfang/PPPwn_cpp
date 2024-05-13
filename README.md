@@ -16,7 +16,8 @@ You can download the latest build from [nightly.link](https://nightly.link/xfang
 
 For Windows users, you need to install [npcap](https://npcap.com) before run this program.
 
-For macOS users, you need to run `sudo xattr -rd com.apple.quarantine <path-to-pppwn>` after download.
+For macOS users, you need to run `sudo xattr -rd com.apple.quarantine <path-to-pppwn>` after download, and install [chmodbpf](https://formulae.brew.sh/cask/wireshark-chmodbpf) before run this program.
+Please refer to [#10](https://github.com/xfangfang/PPPwn_cpp/issues/10) for more information.
 
 ```shell
 # show help
