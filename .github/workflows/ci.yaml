@@ -5,7 +5,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  info:
+    name: Info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: info
+        run: |
+          echo "Git commit: $(git rev-parse HEAD)" > build_info.txt
+          echo "Build time: $(date)" >> build_info.txt
+          echo "BUILD_TIME=$(data)" >> $GITHUB_OUTPUT
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.info.outputs.BUILD_TIME }}
+          path: build_info.txt
+
   build:
+    name: "${{ matrix.target }}${{ matrix.name}}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -13,8 +30,6 @@ jobs:
         include:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
-          - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DPCAP_ROOT=/tmp/sdk", ext: ".exe"}
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -38,15 +53,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install llvm --no-install-recommends
 
-      - name: Download NPCAP SDK
-        if: matrix.target == 'x86_64-windows-gnu'
-        run: |
-          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
-          unzip /tmp/sdk.zip -d /tmp/sdk
-          mkdir -p /tmp/sdk/lib/x64
-          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
-          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
-
       - name: Build executable
         run: |
           sudo rm -rf /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc
@@ -62,10 +68,17 @@ jobs:
           name: "${{ matrix.target }}${{ matrix.name}}"
           path: build/pppwn.tar.gz
 
-  build-win7-x86:
+  build-windows:
+    name: "${{ matrix.target }}-windows-gnu"
     runs-on: windows-2019
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, msystem: MINGW64 }
+          - { arch: x86, msystem: MINGW32 }
     env:
-      MSYSTEM: MINGW32
+      MSYSTEM: ${{ matrix.msystem }}
       MSYS2_PATH_TYPE: inherit
     defaults:
       run:
@@ -78,7 +91,6 @@ jobs:
           pacman -S --needed --noconfirm --noprogressbar \
             ${MINGW_PACKAGE_PREFIX}-gcc \
             ${MINGW_PACKAGE_PREFIX}-ninja unzip upx
-          
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O npcap-sdk.zip
           unzip npcap-sdk.zip -d sdk
 
@@ -86,10 +98,11 @@ jobs:
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DPCAP_ROOT=`pwd`/sdk
           cmake --build build -t pppwn
-          upx -lzma build/pppwn.exe
+          strip build/pppwn.exe
+          upx --lzma build/pppwn.exe
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: x86-windows-gnu
+          name: ${{ matrix.target }}-windows-gnu
           path:  build/pppwn.exe
