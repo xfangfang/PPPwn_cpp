@@ -42,7 +42,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     add_compile_definitions(-D_Post_invalid_=) # Fix incompatibility with old npcap
-    list(APPEND CLI_LINK_LIB winmm)
+    list(APPEND CLI_LINK_LIB winmm ws2_32)
 endif ()
 
 if (USE_SYSTEM_PCAPPLUSPLUS)
