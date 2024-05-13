@@ -5,7 +5,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  info:
+    name: Info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: info
+        run: |
+          echo "Git commit: $(git rev-parse HEAD)" > build_info.txt
+          echo "Build time: $(date)" >> build_info.txt
+          echo "BUILD_TIME=$(date +"%Y%m%d_%H-%M-%S")" >> $GITHUB_OUTPUT
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.info.outputs.BUILD_TIME }}
+          path: build_info.txt
+
   build:
+    name: "${{ matrix.target }}${{ matrix.name}}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -14,7 +31,7 @@ jobs:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
           - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe"}
+              cmake: "-DPCAP_ROOT=/tmp/sdk", ext: ".exe", name: "(ucrt)" }
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -61,3 +78,42 @@ jobs:
         with:
           name: "${{ matrix.target }}${{ matrix.name}}"
           path: build/pppwn.tar.gz
+
+  build-windows:
+    name: "${{ matrix.arch }}-windows-gnu"
+    runs-on: windows-2019
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, msystem: MINGW64 }
+          - { arch: x86, msystem: MINGW32 }
+    env:
+      MSYSTEM: ${{ matrix.msystem }}
+      MSYS2_PATH_TYPE: inherit
+    defaults:
+      run:
+        shell: C:\shells\msys2bash.cmd {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependency
+        run: |
+          pacman -S --needed --noconfirm --noprogressbar \
+            ${MINGW_PACKAGE_PREFIX}-gcc \
+            ${MINGW_PACKAGE_PREFIX}-ninja unzip upx
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O npcap-sdk.zip
+          unzip npcap-sdk.zip -d sdk
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DPCAP_ROOT=`pwd`/sdk
+          cmake --build build -t pppwn
+          strip build/pppwn.exe
+          upx --lzma build/pppwn.exe
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.arch }}-windows-gnu
+          path:  build/pppwn.exe
