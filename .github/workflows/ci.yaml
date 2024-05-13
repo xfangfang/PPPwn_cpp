@@ -61,3 +61,35 @@ jobs:
         with:
           name: "${{ matrix.target }}${{ matrix.name}}"
           path: build/pppwn.tar.gz
+
+  build-win7-x86:
+    runs-on: windows-2019
+    env:
+      MSYSTEM: MINGW32
+      MSYS2_PATH_TYPE: inherit
+    defaults:
+      run:
+        shell: C:\shells\msys2bash.cmd {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependency
+        run: |
+          pacman -S --needed --noconfirm --noprogressbar \
+            ${MINGW_PACKAGE_PREFIX}-gcc \
+            ${MINGW_PACKAGE_PREFIX}-ninja unzip upx
+          
+          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O npcap-sdk.zip
+          unzip npcap-sdk.zip -d sdk
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=`pwd`/sdk
+          cmake --build build -t pppwn
+          upx -lzma build/pppwn.exe
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86-windows-gnu
+          path:  build/pppwn.exe
