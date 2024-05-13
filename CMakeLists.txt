@@ -42,7 +42,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     add_compile_definitions(-D_Post_invalid_=) # Fix incompatibility with old npcap
-    list(APPEND CLI_LINK_LIB winmm ws2_32)
+    list(APPEND CLI_LINK_LIB winmm)
 endif ()
 
 if (USE_SYSTEM_PCAPPLUSPLUS)
@@ -89,6 +89,9 @@ else ()
     set_property(TARGET Packet++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Pcap++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Common++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
+    if (MINGW)
+        list(APPEND CLI_LINK_LIB ${Packet_LIBRARY})
+    endif ()
     list(APPEND APP_LINK_LIB Pcap++)
 endif ()
 

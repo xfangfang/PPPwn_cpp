@@ -68,6 +68,7 @@
 
 #define CALLOUT_RETURNUNLOCKED 0x10
 
+#undef AF_INET6
 #define AF_INET6 28
 
 #define IFT_ETHER 0x6
