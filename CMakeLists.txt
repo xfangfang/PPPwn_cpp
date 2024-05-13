@@ -87,6 +87,8 @@ else ()
             GIT_TAG v23.09)
     FetchContent_MakeAvailable(PcapPlusPlus)
     set_property(TARGET Packet++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
+    set_property(TARGET Pcap++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
+    set_property(TARGET Common++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     list(APPEND APP_LINK_LIB Pcap++)
 endif ()
 
