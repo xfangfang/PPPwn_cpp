@@ -5,6 +5,9 @@
 #include <string>
 #include <PcapLiveDeviceList.h>
 #include <clipp.h>
+#if defined(__APPLE__)
+#include <SystemConfiguration/SystemConfiguration.h>
+#endif
 
 #include "exploit.h"
 
@@ -57,8 +60,8 @@ std::vector<uint8_t> readBinary(const std::string &filename) {
 }
 
 int startExploit(const std::string &interface, enum FirmwareVersion fw,
-                  const std::string &stage1, const std::string &stage2,
-                  bool retry) {
+                 const std::string &stage1, const std::string &stage2,
+                 bool retry) {
     Exploit exploit;
     if (exploit.setFirmwareVersion(fw)) cleanup(1);
     if (exploit.setInterface(interface)) cleanup(1);
@@ -74,10 +77,36 @@ int startExploit(const std::string &interface, enum FirmwareVersion fw,
 
 void listInterfaces() {
     std::cout << "[+] interfaces: " << std::endl;
+#if defined(__APPLE__)
+    CFArrayRef interfaces = SCNetworkInterfaceCopyAll();
+    if (!interfaces) {
+        std::cerr << "[-] Failed to get interfaces" << std::endl;
+        exit(1);
+    }
+    CFIndex serviceCount = CFArrayGetCount(interfaces);
+    char buffer[1024];
+    for (CFIndex i = 0; i < serviceCount; ++i) {
+        auto interface = (SCNetworkInterfaceRef) CFArrayGetValueAtIndex(interfaces, i);
+        auto serviceName = SCNetworkInterfaceGetLocalizedDisplayName(interface);
+        auto bsdName = SCNetworkInterfaceGetBSDName(interface);
+        if (bsdName) {
+            CFStringGetCString(bsdName, buffer, sizeof(buffer), kCFStringEncodingUTF8);
+            printf("\t%s ", buffer);
+            if (serviceName) {
+                CFStringGetCString(serviceName, buffer, sizeof(buffer), kCFStringEncodingUTF8);
+                printf("%s", buffer);
+            }
+            printf("\n");
+        }
+    }
+    CFRelease(interfaces);
+#else
     std::vector<pcpp::PcapLiveDevice *> devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
     for (pcpp::PcapLiveDevice *dev: devList) {
+        if (dev->getLoopback()) continue;
         std::cout << "\t" << dev->getName() << " " << dev->getDesc() << std::endl;
     }
+#endif
     exit(0);
 }
 
