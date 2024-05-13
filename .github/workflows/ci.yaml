@@ -31,7 +31,7 @@ jobs:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
           - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk64", ext: ".exe" }
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe" }
           - { target: x86-windows-gnu,    os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk86", ext: ".exe" }
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -62,11 +62,12 @@ jobs:
         run: |
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
-          mkdir -p /tmp/sdk64/lib/x64
+          mkdir -p /tmp/sdk/lib/x64
           mkdir -p /tmp/sdk86/lib
-          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk64/lib/x64
-          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk64/lib
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
+          cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
           cp /tmp/sdk/Lib/*lib /tmp/sdk86/lib
+          cp -r /tmp/sdk/Include /tmp/sdk86
 
       - name: Build executable
         run: |
