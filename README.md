@@ -50,7 +50,7 @@ cmake --build build pppwn
 
 # cross compile for Windows
 # https://npcap.com/dist/npcap-sdk-1.13.zip
-cmake -B build -DZIG_TARGET=x86_64-windows-gnu -DPCAP_ROOT=<path to npcap sdk>
+cmake -B build -DZIG_TARGET=x86_64-windows-gnu -DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=<path to npcap sdk>
 cmake --build build pppwn
 ```
 

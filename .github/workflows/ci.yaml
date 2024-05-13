@@ -31,7 +31,9 @@ jobs:
           - { target: x86_64-macos-none,  os: macos-13     , strip: "strip",      upx: "ls" }
           - { target: aarch64-macos-none, os: macos-14     , strip: "strip",      upx: "ls" }
           - { target: x86_64-windows-gnu, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
-              cmake: "-DPCAP_ROOT=/tmp/sdk", ext: ".exe", name: "(ucrt)" }
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe" }
+          - { target: x86-windows-gnu,    os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk86", ext: ".exe" }
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -56,13 +58,16 @@ jobs:
         run: sudo apt-get install llvm --no-install-recommends
 
       - name: Download NPCAP SDK
-        if: matrix.target == 'x86_64-windows-gnu'
+        if: matrix.target == 'x86_64-windows-gnu' || matrix.target == 'x86-windows-gnu'
         run: |
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
           mkdir -p /tmp/sdk/lib/x64
+          mkdir -p /tmp/sdk86/lib
           cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
           cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
+          cp /tmp/sdk/Lib/*lib /tmp/sdk86/lib
+          cp -r /tmp/sdk/Include /tmp/sdk86
 
       - name: Build executable
         run: |
@@ -80,7 +85,7 @@ jobs:
           path: build/pppwn.tar.gz
 
   build-windows:
-    name: "${{ matrix.arch }}-windows-gnu"
+    name: "${{ matrix.arch }}-windows-gnu(win7)"
     runs-on: windows-2019
     strategy:
       fail-fast: false
@@ -115,5 +120,5 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.arch }}-windows-gnu
+          name: ${{ matrix.arch }}-windows-gnu(win7)
           path:  build/pppwn.exe
