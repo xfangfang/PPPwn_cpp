@@ -85,7 +85,7 @@ else ()
         set(HAVE_PCAP_DIRECTION ON)
     endif ()
     set(BUILD_SHARED_LIBS OFF)
-    set(PCAPPP_ENABLE_PCAP_SET_DIRECTION PPPWN_PCAP_DIRECTION)
+    set(PCAPPP_ENABLE_PCAP_SET_DIRECTION ${PPPWN_PCAP_DIRECTION})
     set(PCAPPP_ENABLE_PCAP_IMMEDIATE_MODE ON)
     include(FetchContent)
     FetchContent_Declare(PcapPlusPlus GIT_REPOSITORY https://github.com/seladb/PcapPlusPlus.git
