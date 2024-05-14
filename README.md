@@ -38,20 +38,20 @@ You can also add cmake option `-DUSE_SYSTEM_PCAP=OFF` to compile pcap from sourc
 ```shell
 # native build (macOS, Linux)
 cmake -B build
-cmake --build build pppwn
+cmake --build build -t pppwn
 
 # cross compile for mipsel linux (soft float)
 cmake -B build -DZIG_TARGET=mipsel-linux-musl -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-msoft-float"
-cmake --build build pppwn
+cmake --build build -t pppwn
 
 # cross compile for arm linux (armv7 cortex-a7)
 cmake -B build -DZIG_TARGET=arm-linux-musleabi -DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION="-mcpu=cortex_a7"
-cmake --build build pppwn
+cmake --build build -t pppwn
 
 # cross compile for Windows
 # https://npcap.com/dist/npcap-sdk-1.13.zip
 cmake -B build -DZIG_TARGET=x86_64-windows-gnu -DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=<path to npcap sdk>
-cmake --build build pppwn
+cmake --build build -t pppwn
 ```
 
 # Credits
