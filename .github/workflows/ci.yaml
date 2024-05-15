@@ -34,6 +34,8 @@ jobs:
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk", ext: ".exe" }
           - { target: x86-windows-gnu,    os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdk86", ext: ".exe" }
+          - { target: aarch64-windows-gnu,    os: ubuntu-latest, strip: "llvm-strip", upx: "ls",
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DPacket_ROOT=/tmp/sdkarm", ext: ".exe" }
           - { target: x86_64-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF" }
           - { target: aarch64-linux-musl, os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
@@ -58,16 +60,19 @@ jobs:
         run: sudo apt-get install llvm --no-install-recommends
 
       - name: Download NPCAP SDK
-        if: matrix.target == 'x86_64-windows-gnu' || matrix.target == 'x86-windows-gnu'
+        if: contains(matrix.target, 'windows')
         run: |
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
           mkdir -p /tmp/sdk/lib/x64
           mkdir -p /tmp/sdk86/lib
+          mkdir -p /tmp/sdkarm/lib
           cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib/x64
           cp /tmp/sdk/Lib/x64/*lib /tmp/sdk/lib
           cp /tmp/sdk/Lib/*lib /tmp/sdk86/lib
           cp -r /tmp/sdk/Include /tmp/sdk86
+          cp /tmp/sdk/Lib/ARM64/*lib /tmp/sdkarm/lib
+          cp -r /tmp/sdk/Include /tmp/sdkarm
 
       - name: Build executable
         run: |
