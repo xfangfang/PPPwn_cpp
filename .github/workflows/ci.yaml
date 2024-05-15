@@ -60,7 +60,7 @@ jobs:
         run: sudo apt-get install llvm --no-install-recommends
 
       - name: Download NPCAP SDK
-        if: matrix.target == 'x86_64-windows-gnu' || matrix.target == 'x86-windows-gnu'
+        if: contains(matrix.target, 'windows')
         run: |
           wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
