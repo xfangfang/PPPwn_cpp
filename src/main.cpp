@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
     int timeout = 0;
     int wait_after_pin = 1;
     int groom_delay = 4;
+    int buffer_size = 0;
     bool retry = false;
     bool no_wait_padi = false;
 
@@ -130,6 +131,8 @@ int main(int argc, char *argv[]) {
             option("-wap", "--wait-after-pin") & integer("seconds", wait_after_pin), \
             "wait for 1ms every `n` rounds during Heap grooming (default: 4)" % option("-gd", "--groom-delay") &
             integer("1-4097", groom_delay), \
+            "PCAP buffer size in bytes, less than 100 indicates default value (usually 2MB)  (default: 0)" %
+            option("-bs", "--buffer-size") & integer("bytes", buffer_size), \
             "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
             "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi)
             ) | \
@@ -163,7 +166,7 @@ int main(int argc, char *argv[]) {
 
     Exploit exploit;
     if (exploit.setFirmwareVersion((FirmwareVersion) fw)) return 1;
-    if (exploit.setInterface(interface)) return 1;
+    if (exploit.setInterface(interface, buffer_size)) return 1;
     auto stage1_data = readBinary(stage1);
     if (stage1_data.empty()) return 1;
     auto stage2_data = readBinary(stage2);
