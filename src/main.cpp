@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
     std::string interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
     int fw = 1100;
     int timeout = 0;
+    int wait_after_pin = 1;
     bool retry = false;
     bool no_wait_padi = false;
 
@@ -124,6 +125,8 @@ int main(int argc, char *argv[]) {
             "stage2 binary (default: stage2/stage2.bin)" % option("-s2", "--stage2") & value("STAGE2", stage2), \
             "timeout in seconds for ps4 response, 0 means always wait (default: 0)" %
             option("-t", "--timeout") & integer("seconds", timeout), \
+            "Waiting time in seconds after the first round CPU pinning (default: 1)" %
+            option("-wap", "--wait-after-pin") & integer("seconds", wait_after_pin), \
             "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
             "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi)
             ) | \
@@ -144,7 +147,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
-              << " timeout=" << timeout
+              << " timeout=" << timeout << " wait-after-pin=" << wait_after_pin
               << " auto-retry=" << (retry ? "on" : "off") << " no-wait-padi=" << (no_wait_padi ? "on" : "off")
               << std::endl;
 
@@ -167,9 +170,11 @@ int main(int argc, char *argv[]) {
     exploit.setTimeout(timeout);
     exploit.setWaitPADI(!no_wait_padi);
 
+    exploit.setWaitAfterPin(wait_after_pin);
     if (!retry) return exploit.run();
 
     while (exploit.run() != 0) {
+        exploit.setWaitAfterPin(1);
         exploit.ppp_byebye();
         std::cerr << "[*] Retry after 5s..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
