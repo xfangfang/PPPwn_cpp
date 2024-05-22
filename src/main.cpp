@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
     int fw = 1100;
     int timeout = 0;
     int wait_after_pin = 1;
+    int groom_delay = 4;
     bool retry = false;
     bool no_wait_padi = false;
 
@@ -127,6 +128,8 @@ int main(int argc, char *argv[]) {
             option("-t", "--timeout") & integer("seconds", timeout), \
             "Waiting time in seconds after the first round CPU pinning (default: 1)" %
             option("-wap", "--wait-after-pin") & integer("seconds", wait_after_pin), \
+            "wait for 1ms every `n` rounds during Heap grooming (default: 4)" % option("-gd", "--groom-delay") &
+            integer("1-4097", groom_delay), \
             "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
             "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi)
             ) | \
@@ -147,7 +150,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
-              << " timeout=" << timeout << " wait-after-pin=" << wait_after_pin
+              << " timeout=" << timeout << " wait-after-pin=" << wait_after_pin << " groom-delay=" << groom_delay
               << " auto-retry=" << (retry ? "on" : "off") << " no-wait-padi=" << (no_wait_padi ? "on" : "off")
               << std::endl;
 
@@ -169,8 +172,9 @@ int main(int argc, char *argv[]) {
     exploit.setStage2(std::move(stage2_data));
     exploit.setTimeout(timeout);
     exploit.setWaitPADI(!no_wait_padi);
-
+    exploit.setGroomDelay(groom_delay);
     exploit.setWaitAfterPin(wait_after_pin);
+
     if (!retry) return exploit.run();
 
     while (exploit.run() != 0) {
