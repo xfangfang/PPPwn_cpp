@@ -104,7 +104,13 @@ target_compile_options(${PROJECT_NAME}_static PUBLIC ${APP_BUILD_OPTIONS})
 target_include_directories(${PROJECT_NAME}_static PUBLIC include)
 
 if (BUILD_CLI)
+    include(FetchContent)
+    FetchContent_Declare(clipp GIT_REPOSITORY https://github.com/muellan/clipp.git
+            GIT_TAG v1.2.3)
+    FetchContent_MakeAvailable(clipp)
+
     add_executable(${PROJECT_NAME} src/main.cpp)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${clipp_SOURCE_DIR}/include)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static ${CLI_LINK_LIB})
 endif ()
 
