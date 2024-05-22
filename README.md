@@ -47,6 +47,7 @@ pppwn --interface en0 --fw 1100 --stage1 "stage1.bin" --stage2 "stage2.bin" --ti
 - `-t` `--timeout`: the timeout in seconds for ps4 response, 0 means always wait (default: `0`)
 - `-wap` `--wait-after-pin`: the waiting time in seconds after first round CPU pinning (default: `1`)
 - `-gd` `--groom-delay`: wait for 1ms every `groom-delay` rounds during Heap grooming (default: `4`)
+- `-bs` `--buffer-size`: PCAP buffer size in bytes, less than 100 indicates default value (usually 2MB) (default: `0`)
 - `-a` `--auto-retry`: automatically retry when fails or timeout
 - `-nw` `--no-wait-padi`: don't wait one more [PADI](https://en.wikipedia.org/wiki/Point-to-Point_Protocol_over_Ethernet#Client_to_server:_Initiation_(PADI)) before starting the exploit
 
@@ -56,7 +57,7 @@ Supplement:
 2. For `--no-wait-padi`, by default, `pppwn_cpp` will wait for two `PADI` request, according to [TheOfficialFloW/PPPwn/pull/48](https://github.com/TheOfficialFloW/PPPwn/pull/48) this helps to improve stability. You can turn off this feature with this parameter if you don't need it.
 3. For `--wait-after-pin`, according to [SiSTR0/PPPwn/pull/1](https://github.com/SiSTR0/PPPwn/pull/1) set this parameter to `20` helps to improve stability (not work for me).
 4. For `--groom-delay`, This is an empirical value. The Python version of pppwn does not set any wait at Heap grooming, but if the C++ version does not add some wait, there is a probability of kernel panic on my ps4. You can set any value within 1-4097 (4097 is equivalent to not doing any wait).
-
+5. For `--buffer-size`, When running on low-end devices, this value can be set to reduce memory usage. I tested that setting it to 10240 can run normally, and the memory usage is about 3MB. (Note: A value that is too small may cause some packets to not be captured properly)
 
 # Development
 
