@@ -28,8 +28,8 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data) {
             self->stopExploit();
             mg_http_reply(c, 200, s_json_header, "{\"code\": 200}");
         } else {
-            struct mg_http_serve_opts opts = {.fs = &mg_fs_packed};
-            mg_http_serve_file(c, hm, "/src/index.html", &opts);
+            struct mg_http_serve_opts opts = {.root_dir= "/web", .fs = &mg_fs_packed};
+            mg_http_serve_dir(c, hm, &opts);
         }
     } else if (ev == MG_EV_CLOSE) {
         self->removeClient(c);
