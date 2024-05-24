@@ -50,6 +50,8 @@ pppwn --interface en0 --fw 1100 --stage1 "stage1.bin" --stage2 "stage2.bin" --ti
 - `-bs` `--buffer-size`: PCAP buffer size in bytes, less than 100 indicates default value (usually 2MB) (default: `0`)
 - `-a` `--auto-retry`: automatically retry when fails or timeout
 - `-nw` `--no-wait-padi`: don't wait one more [PADI](https://en.wikipedia.org/wiki/Point-to-Point_Protocol_over_Ethernet#Client_to_server:_Initiation_(PADI)) before starting the exploit
+- `--web`: use the web interface
+- `--url`: the url of the web interface (default: `0.0.0.0:7796`)
 
 Supplement:
 

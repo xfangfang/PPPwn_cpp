@@ -30,6 +30,8 @@ public:
 
     ~WebPage();
 
+    void setUrl(const std::string &url);
+
     void run();
 
     void stop();
@@ -55,4 +57,5 @@ private:
     CustomBuf buf;
     std::streambuf *stdbuf;
     std::string historyLog;
+    std::string url = "http://0.0.0.0:7796";
 };
