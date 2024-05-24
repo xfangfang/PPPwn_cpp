@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    if (exploit->setFirmwareVersion((FirmwareVersion) fw)) return 1;
+    if (exploit->setFirmwareVersion((FirmwareVersion) offset)) return 1;
     if (exploit->setInterface(interface, buffer_size)) return 1;
     auto stage1_data = readBinary(stage1);
     if (stage1_data.empty()) return 1;
