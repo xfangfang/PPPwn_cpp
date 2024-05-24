@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
     using namespace clipp;
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
     std::string interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
+    std::string web_url = "0.0.0.0:7796";
     int fw = 1100;
     int timeout = 0;
     int wait_after_pin = 1;
@@ -140,7 +141,8 @@ int main(int argc, char *argv[]) {
             option("-bs", "--buffer-size") & integer("bytes", buffer_size), \
             "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
             "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi), \
-            "start a web page" % option("--web").set(web_page)
+            "start a web page" % option("--web").set(web_page), \
+            "url" % option("--url") & value("url", web_url)
             ) | \
             "list interfaces" % command("list").call(listInterfaces)
     );
@@ -183,6 +185,7 @@ int main(int argc, char *argv[]) {
 
     if (web_page) {
         web = std::make_shared<WebPage>(exploit);
+        web->setUrl(web_url);
         web->run();
         return 0;
     }

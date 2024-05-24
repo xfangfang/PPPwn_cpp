@@ -47,16 +47,20 @@ WebPage::~WebPage() {
     std::cout.rdbuf(stdbuf);
 }
 
+void WebPage::setUrl(const std::string &url) {
+    this->url = "http://" + url;
+}
+
 void WebPage::run() {
     mg_log_set(MG_LL_ERROR);
     struct mg_mgr mgr{};
     mg_mgr_init(&mgr);
-    const char *url = "http://0.0.0.0:8000";
 
-    if (mg_http_listen(&mgr, url, ev_handler, this) == nullptr) {
-        printf("[-] Cannot listen on %s\n", url);
+    if (mg_http_listen(&mgr, url.c_str(), ev_handler, this) == nullptr) {
+        printf("[-] Cannot listen on %s\n", url.c_str());
+        return;
     } else {
-        printf("[+] Starting web server on %s\n", url);
+        printf("[+] Starting web server on %s\n", url.c_str());
     }
     running = true;
     while (running) {
