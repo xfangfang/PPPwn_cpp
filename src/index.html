@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>PPPwn</title>
+</head>
+<body>
+<h1>PPPwn</h1>
+
+<div id="result" style="height: 70vh; overflow-y: scroll; background-color: aliceblue;"></div>
+<button id="run">Run</button>
+<button id="stop">Stop</button>
+<script>
+    let source = new EventSource("pppwn.log")
+    let result = document.getElementById("result")
+
+    function log(msg) {
+        result.innerHTML += "<span>" + msg + "</span><br>"
+        result.scrollTop = result.scrollHeight
+    }
+
+    function clear_log(msg) {
+        result.innerHTML = ""
+        result.scrollTop = 0
+    }
+
+    source.onmessage = function (event) {
+        log(event.data)
+    };
+
+    document.getElementById("run").addEventListener("click", function () {
+        clear_log()
+        fetch('/run', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                console.log("Started")
+            })
+            .catch((error) => {
+                log('Server Error: ' + error);
+            });
+    });
+
+    document.getElementById("stop").addEventListener("click", function () {
+        fetch('/stop', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                console.log("Stopped")
+            })
+            .catch((error) => {
+                log('Server Error: ' + error);
+            });
+    });
+</script>
+</body>
+</html>

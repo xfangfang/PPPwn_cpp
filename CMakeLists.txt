@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.12)
 include(CMakeDependentOption)
 set(APP_BUILD_OPTIONS)
 set(APP_LINK_LIB)
-set(CLI_LINK_LIB)
 
 # Zig makes cross-compiling easier and ignores glibc version issue
 # target can be: x86_64-macos-none, x86_64-macos.11.0-none, x86_64-windows-gnu, mipsel-linux-musl, x86_64-linux-gnu.2.17, ...
@@ -32,7 +31,7 @@ if (ZIG_TARGET)
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
     list(APPEND APP_BUILD_OPTIONS -DDEBUG)
 else ()
     # Remove prefix path in log for release build
@@ -45,7 +44,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     add_compile_definitions(_Post_invalid_=) # Fix incompatibility with old npcap
-    list(APPEND CLI_LINK_LIB winmm)
+    list(APPEND APP_LINK_LIB winmm)
 endif ()
 
 if (USE_SYSTEM_PCAPPLUSPLUS)
@@ -61,7 +60,7 @@ else ()
         # Fix zig cross-compiling issue
         set(CMAKE_USE_PTHREADS_INIT ON)
         set(PPPWN_PCAP_DIRECTION OFF)
-    endif()
+    endif ()
     if (NOT USE_SYSTEM_PCAP)
         include(FetchContent)
         set(DISABLE_DBUS ON)
@@ -109,9 +108,25 @@ if (BUILD_CLI)
             GIT_TAG v1.2.3)
     FetchContent_MakeAvailable(clipp)
 
-    add_executable(${PROJECT_NAME} src/main.cpp)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${clipp_SOURCE_DIR}/include)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static ${CLI_LINK_LIB})
+    FetchContent_Declare(mongoose GIT_REPOSITORY https://github.com/cesanta/mongoose.git
+            GIT_TAG 7.14)
+    FetchContent_MakeAvailable(mongoose)
+
+    add_library(mongoose STATIC ${mongoose_SOURCE_DIR}/mongoose.c)
+    target_compile_options(mongoose PUBLIC -DMG_ENABLE_PACKED_FS=1)
+    target_include_directories(mongoose PUBLIC ${mongoose_SOURCE_DIR})
+
+    add_custom_command(
+            OUTPUT ${CMAKE_BINARY_DIR}/static.c
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMAND ${ZIG} cc -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
+            COMMAND ${CMAKE_BINARY_DIR}/pack src/index.html > ${CMAKE_BINARY_DIR}/static.c
+            DEPENDS src/index.html
+    )
+
+    add_executable(${PROJECT_NAME} src/main.cpp src/web.cpp ${mongoose_SOURCE_DIR}/mongoose.c ${CMAKE_BINARY_DIR}/static.c)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${clipp_SOURCE_DIR}/include ${mongoose_SOURCE_DIR})
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static mongoose)
 endif ()
 
 if (BUILD_TEST)
