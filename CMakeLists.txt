@@ -120,8 +120,8 @@ if (BUILD_CLI)
             OUTPUT ${CMAKE_BINARY_DIR}/static.c
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND ${ZIG} cc -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
-            COMMAND ${CMAKE_BINARY_DIR}/pack src/index.html > ${CMAKE_BINARY_DIR}/static.c
-            DEPENDS src/index.html
+            COMMAND ${CMAKE_BINARY_DIR}/pack web/*.html web/*.ttf > ${CMAKE_BINARY_DIR}/static.c
+            DEPENDS web/index.html
     )
 
     add_executable(${PROJECT_NAME} src/main.cpp src/web.cpp ${mongoose_SOURCE_DIR}/mongoose.c ${CMAKE_BINARY_DIR}/static.c)
