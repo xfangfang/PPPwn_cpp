@@ -60,7 +60,7 @@ static pcpp::PayloadLayer *buildPPPLayer(pcpp::PPPoELayer *last, uint8_t code, u
     uint8_t ppp_data[4 + data_len];
     ppp_data[0] = code;
     ppp_data[1] = id;
-    (*(uint16_t *) &ppp_data[2]) = p16be(4 + data_len);
+    (*(uint16_t * ) & ppp_data[2]) = p16be(4 + data_len);
     if (data_len > 0) memcpy(&ppp_data[4], data, data_len);
     auto *pppLayer = new pcpp::PayloadLayer(ppp_data, sizeof(ppp_data), false);
     last->getPPPoEHeader()->payloadLength = p16be(force_htole16(last->getPPPoEHeader()->payloadLength) +
@@ -73,7 +73,7 @@ static pcpp::PayloadLayer *buildPPPLayer(pcpp::PPPoELayer *last, uint8_t code, u
     uint8_t ppp_data[4];
     ppp_data[0] = code;
     ppp_data[1] = id;
-    (*(uint16_t *) &ppp_data[2]) = p16be(4 + data_len);
+    (*(uint16_t * ) & ppp_data[2]) = p16be(4 + data_len);
     auto *pppLayer = new pcpp::PayloadLayer(ppp_data, sizeof(ppp_data), false);
     last->getPPPoEHeader()->payloadLength = p16be(force_htole16(last->getPPPoEHeader()->payloadLength) +
                                                   sizeof(ppp_data) + sizeof(uint16_t));
@@ -110,7 +110,7 @@ pcpp::Packet PacketBuilder::lcpEchoReply(const pcpp::MacAddress &source_mac, con
     auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOES);
     auto *pppoeLayer = new pcpp::PPPoESessionLayer(1, 1, session, PCPP_PPP_LCP);
 
-    auto *lcpEchoReply = buildPPPLayer(pppoeLayer, ECHO_REPLY, id, (uint8_t *) &magic_number, sizeof(uint32_t));
+    auto *lcpEchoReply = buildPPPLayer(pppoeLayer, ECHO_REPLY, id, (uint8_t * ) & magic_number, sizeof(uint32_t));
 
     pcpp::Packet packet;
     packet.addLayer(ether, true);
@@ -190,7 +190,7 @@ pcpp::Packet PacketBuilder::ipcpRequest(const pcpp::MacAddress &source_mac, cons
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    *(uint32_t *) (&data[2]) = pcpp::IPv4Address(SOURCE_IPV4).toInt();
+    *(uint32_t * )(&data[2]) = pcpp::IPv4Address(SOURCE_IPV4).toInt();
     pcpp::PayloadLayer *pppLayer = buildPPPLayer(pppoeLayer, CONF_REQ, IPCP_ID, data.data(), data.size());
 
     pcpp::Packet packet;
@@ -209,7 +209,7 @@ PacketBuilder::ipcpNak(const pcpp::MacAddress &source_mac, const pcpp::MacAddres
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    *(uint32_t *) (&data[2]) = pcpp::IPv4Address(TARGET_IPV4).toInt();
+    *(uint32_t * )(&data[2]) = pcpp::IPv4Address(TARGET_IPV4).toInt();
     pcpp::PayloadLayer *pppLayer = buildPPPLayer(pppoeLayer, CONF_NAK, id, data.data(), data.size());
 
     pcpp::Packet packet;
@@ -303,4 +303,18 @@ pcpp::Packet PacketBuilder::lcpTerminate(const pcpp::MacAddress &source_mac, con
     packet.addLayer(pppLayer, true);
     hexdump(packet);
     return packet;
+}
+
+pcpp::PPPoESessionLayer *PacketBuilder::getPPPoESessionLayer(const pcpp::Packet &packet, uint16_t pppType) {
+    if (!packet.isPacketOfType(pcpp::PPPoESession)) return nullptr;
+    auto *pppLayer = packet.getLayerOfType<pcpp::PPPoESessionLayer>();
+    if (pppLayer && pppLayer->getPPPNextProtocol() == pppType) return pppLayer;
+    return nullptr;
+}
+
+pcpp::PPPoEDiscoveryLayer *PacketBuilder::getPPPoEDiscoveryLayer(const pcpp::Packet &packet, uint8_t type) {
+    if (!packet.isPacketOfType(pcpp::PPPoEDiscovery)) return nullptr;
+    auto *layer = packet.getLayerOfType<pcpp::PPPoEDiscoveryLayer>();
+    if (layer && layer->getPPPoEHeader()->code == type) return layer;
+    return nullptr;
 }
