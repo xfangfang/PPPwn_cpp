@@ -47,10 +47,6 @@ public:
     }
 };
 
-uint16_t force_htole16(uint16_t host_16bits) {
-    return ((host_16bits >> 8) & 0xff) | ((host_16bits << 8) & 0xff00);
-}
-
 uint16_t p16be(uint64_t val) {
     return htobe16(static_cast<uint16_t>(val & 0xffff));
 }
@@ -63,7 +59,7 @@ static pcpp::PayloadLayer *buildPPPLayer(pcpp::PPPoELayer *last, uint8_t code, u
     (*(uint16_t * ) & ppp_data[2]) = p16be(4 + data_len);
     if (data_len > 0) memcpy(&ppp_data[4], data, data_len);
     auto *pppLayer = new pcpp::PayloadLayer(ppp_data, sizeof(ppp_data), false);
-    last->getPPPoEHeader()->payloadLength = p16be(force_htole16(last->getPPPoEHeader()->payloadLength) +
+    last->getPPPoEHeader()->payloadLength = p16be(p16be(last->getPPPoEHeader()->payloadLength) +
                                                   sizeof(ppp_data) + sizeof(uint16_t));
     return pppLayer;
 }
@@ -75,7 +71,7 @@ static pcpp::PayloadLayer *buildPPPLayer(pcpp::PPPoELayer *last, uint8_t code, u
     ppp_data[1] = id;
     (*(uint16_t * ) & ppp_data[2]) = p16be(4 + data_len);
     auto *pppLayer = new pcpp::PayloadLayer(ppp_data, sizeof(ppp_data), false);
-    last->getPPPoEHeader()->payloadLength = p16be(force_htole16(last->getPPPoEHeader()->payloadLength) +
+    last->getPPPoEHeader()->payloadLength = p16be(p16be(last->getPPPoEHeader()->payloadLength) +
                                                   sizeof(ppp_data) + sizeof(uint16_t));
     return pppLayer;
 }
@@ -86,23 +82,26 @@ static pcpp::PayloadLayer *buildPPPLCPOptionLayer(pcpp::PPPoELayer *last, const 
     option_data[1] = data_len + 2; // len
     if (data_len > 0) memcpy(&option_data[2], data, data_len);
     auto *pppLayer = new pcpp::PayloadLayer(option_data, sizeof(option_data), false);
-    last->getPPPoEHeader()->payloadLength = p16be(force_htole16(last->getPPPoEHeader()->payloadLength) +
+    last->getPPPoEHeader()->payloadLength = p16be(p16be(last->getPPPoEHeader()->payloadLength) +
                                                   sizeof(option_data));
     return pppLayer;
 }
 
-void PacketBuilder::hexPrint(const pcpp::Packet &packet) {
-    auto *rawData = packet.getRawPacket()->getRawData();
+void PacketBuilder::hexPrint(const uint8_t* data, size_t len) {
     std::stringstream ss;
     ss << std::hex;
-    for (int i = 0; i < packet.getRawPacket()->getRawDataLen(); ++i) {
+    for (int i = 0; i < len; ++i) {
         if (i % 16 == 0) {
             if (i != 0) ss << "\n";
             ss << std::setw(4) << std::setfill('0') << i << " ";
         }
-        ss << std::setw(2) << std::setfill('0') << (int) rawData[i] << " ";
+        ss << std::setw(2) << std::setfill('0') << (int) data[i] << " ";
     }
     std::cout << ss.str() << std::endl;
+}
+
+void PacketBuilder::hexPrint(const pcpp::Packet &packet) {
+    PacketBuilder::hexPrint(packet.getRawPacket()->getRawData(), packet.getRawPacket()->getRawDataLen());
 }
 
 pcpp::Packet PacketBuilder::lcpEchoReply(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac,
@@ -110,6 +109,7 @@ pcpp::Packet PacketBuilder::lcpEchoReply(const pcpp::MacAddress &source_mac, con
     auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOES);
     auto *pppoeLayer = new pcpp::PPPoESessionLayer(1, 1, session, PCPP_PPP_LCP);
 
+    magic_number = htole32(magic_number);
     auto *lcpEchoReply = buildPPPLayer(pppoeLayer, ECHO_REPLY, id, (uint8_t * ) & magic_number, sizeof(uint32_t));
 
     pcpp::Packet packet;
@@ -190,7 +190,10 @@ pcpp::Packet PacketBuilder::ipcpRequest(const pcpp::MacAddress &source_mac, cons
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    *(uint32_t * )(&data[2]) = pcpp::IPv4Address(SOURCE_IPV4).toInt();
+    uint32_t ip = pcpp::IPv4Address(SOURCE_IPV4).toInt();
+    for (int i = 0; i < 4; ++i) {
+        data[i + 2] = (ip >> (i * 8)) & 0xFF;
+    }
     pcpp::PayloadLayer *pppLayer = buildPPPLayer(pppoeLayer, CONF_REQ, IPCP_ID, data.data(), data.size());
 
     pcpp::Packet packet;
@@ -209,7 +212,10 @@ PacketBuilder::ipcpNak(const pcpp::MacAddress &source_mac, const pcpp::MacAddres
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    *(uint32_t * )(&data[2]) = pcpp::IPv4Address(TARGET_IPV4).toInt();
+    uint32_t ip = pcpp::IPv4Address(TARGET_IPV4).toInt();
+    for (int i = 0; i < 4; ++i) {
+        data[i + 2] = (ip >> (i * 8)) & 0xFF;
+    }
     pcpp::PayloadLayer *pppLayer = buildPPPLayer(pppoeLayer, CONF_NAK, id, data.data(), data.size());
 
     pcpp::Packet packet;

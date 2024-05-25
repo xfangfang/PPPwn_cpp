@@ -94,6 +94,17 @@ else ()
     set_property(TARGET Pcap++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Common++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     list(APPEND APP_LINK_LIB Pcap++)
+    if (ZIG_TARGET STREQUAL mips-linux-musl)
+        add_custom_command(
+                OUTPUT ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h
+                WORKING_DIRECTORY ${PcapPlusPlus_SOURCE_DIR}
+                COMMAND patch -Np1 -i ${CMAKE_SOURCE_DIR}/endian.patch || true
+                DEPENDS ${CMAKE_SOURCE_DIR}/endian.patch
+                COMMENT "Patching for big endian"
+        )
+        add_custom_target(PatchLayer ALL DEPENDS ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h)
+        add_dependencies(Pcap++ PatchLayer)
+    endif ()
 endif ()
 
 add_library(${PROJECT_NAME}_static STATIC src/exploit.cpp src/packet.cpp)

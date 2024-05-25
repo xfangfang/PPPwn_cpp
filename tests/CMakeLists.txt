@@ -20,3 +20,8 @@ add_custom_target(${PROJECT_NAME}_pybind ALL
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pppwn.py
                 --interface=${IFACE} --fw=${FW} --stage1=${STAGE1} --stage2=${STAGE2}
                 --libpppwn=$<TARGET_FILE:${PROJECT_NAME}_shared>)
+
+add_executable(${PROJECT_NAME}_output
+        ${CMAKE_CURRENT_SOURCE_DIR}/output.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/extern.cpp)
+target_link_libraries(${PROJECT_NAME}_output PUBLIC ${PROJECT_NAME}_static)
