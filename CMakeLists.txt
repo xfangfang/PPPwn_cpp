@@ -94,6 +94,17 @@ else ()
     set_property(TARGET Pcap++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     set_property(TARGET Common++ PROPERTY COMPILE_WARNING_AS_ERROR OFF)
     list(APPEND APP_LINK_LIB Pcap++)
+    set(ZIG_BE "mips" "mips64" "armeb" "powerpc64" "powerpc" "aarch64_be" "s390x")
+    list(FIND ZIG_BE "${ZIG_TARGET_ARCH}" INDEX)
+    if (${INDEX} GREATER -1)
+        message(STATUS "Patching Layer.h to support big endian when cross-compiling")
+        add_custom_target(PatchLayer
+                WORKING_DIRECTORY ${PcapPlusPlus_SOURCE_DIR}
+                COMMAND git checkout -- ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h
+                COMMAND git apply --stat --apply ${CMAKE_SOURCE_DIR}/endian.patch
+        )
+        add_dependencies(Packet++ PatchLayer)
+    endif ()
 endif ()
 
 add_library(${PROJECT_NAME}_static STATIC src/exploit.cpp src/packet.cpp)

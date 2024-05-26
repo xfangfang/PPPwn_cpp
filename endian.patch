@@ -1,0 +1,12 @@
+diff --git a/Packet++/header/Layer.h b/Packet++/header/Layer.h
+index afa1d3fa..438ab99c 100644
+--- a/Packet++/header/Layer.h
++++ b/Packet++/header/Layer.h
+@@ -4,6 +4,7 @@
+ #include <stdint.h>
+ #include <stdio.h>
+ #include "ProtocolType.h"
++#include "EndianPortable.h"
+ #include <string>
+ 
+ /// @file

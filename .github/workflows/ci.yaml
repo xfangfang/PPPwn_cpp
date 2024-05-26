@@ -48,6 +48,8 @@ jobs:
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-mcpu=arm1176jzf_s'", name: "(pi_zero_w)" }
           - { target: mipsel-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
               cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-msoft-float'" }
+          - { target: mips-linux-musl,  os: ubuntu-latest, strip: "llvm-strip", upx: "upx --lzma",
+              cmake: "-DUSE_SYSTEM_PCAP=OFF -DZIG_COMPILE_OPTION='-msoft-float'" }
     steps:
       - uses: actions/checkout@v4
 
