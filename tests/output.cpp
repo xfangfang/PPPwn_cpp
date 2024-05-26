@@ -72,7 +72,9 @@ int main() {
     std::cout << "BAD LCP" << std::endl;
     buildMaliciousLcp(nullptr, 0);
     std::cout << "LCP echo" << std::endl;
-    buildLcpEchoReply(nullptr, 0, "12:23:34:45:56:67", "a0:a1:a2:a3:a4:a5", 123, 2, 345);
+    uint8_t magic_number[] = {0x12, 0x34, 0x56, 0x78};
+    buildLcpEchoReply(nullptr, 0, "12:23:34:45:56:67", "a0:a1:a2:a3:a4:a5", 123, 2,
+                      htole32(*(uint32_t *) &magic_number));
     std::cout << "LCP term" << std::endl;
     buildLcpTerminate(nullptr, 0);
 
