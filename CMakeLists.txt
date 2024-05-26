@@ -98,14 +98,12 @@ else ()
     list(FIND ZIG_BE "${ZIG_TARGET_ARCH}" INDEX)
     if (${INDEX} GREATER -1)
         message(STATUS "Patching Layer.h to support big endian when cross-compiling")
-        add_custom_command(
-                OUTPUT ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h
+        add_custom_target(PatchLayer
                 WORKING_DIRECTORY ${PcapPlusPlus_SOURCE_DIR}
-                COMMAND patch -Np1 -i ${CMAKE_SOURCE_DIR}/endian.patch || true
-                DEPENDS ${CMAKE_SOURCE_DIR}/endian.patch
+                COMMAND git checkout -- ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h
+                COMMAND git apply --stat --apply ${CMAKE_SOURCE_DIR}/endian.patch
         )
-        add_custom_target(PatchLayer ALL DEPENDS ${PcapPlusPlus_SOURCE_DIR}/Packet++/header/Layer.h)
-        add_dependencies(Pcap++ PatchLayer)
+        add_dependencies(Packet++ PatchLayer)
     endif ()
 endif ()
 
