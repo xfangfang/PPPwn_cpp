@@ -2,7 +2,7 @@
 #include <EndianPortable.h>
 
 #define COPY_TO_BUFFER(buffer, packet) \
-    memcpy(buffer, packet.getRawPacket()->getRawData(), size), packet.getRawPacket()->getRawDataLen()
+    size < packet.getRawPacket()->getRawDataLen() ? 0 : memcpy(buffer, packet.getRawPacket()->getRawData(), packet.getRawPacket()->getRawDataLen()), packet.getRawPacket()->getRawDataLen()
 
 #ifndef htole64
 #define htole64
