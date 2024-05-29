@@ -66,7 +66,7 @@ jobs:
       - name: Download NPCAP SDK
         if: contains(matrix.target, 'windows')
         run: |
-          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O /tmp/sdk.zip
+          wget https://github.com/xfangfang/PPPwn_cpp/releases/download/1.0.0/npcap-sdk-1.13.zip -O /tmp/sdk.zip
           unzip /tmp/sdk.zip -d /tmp/sdk
           mkdir -p /tmp/sdk/lib/x64
           mkdir -p /tmp/sdk86/lib
@@ -116,7 +116,7 @@ jobs:
           pacman -S --needed --noconfirm --noprogressbar \
             ${MINGW_PACKAGE_PREFIX}-gcc \
             ${MINGW_PACKAGE_PREFIX}-ninja unzip upx
-          wget https://npcap.com/dist/npcap-sdk-1.13.zip -O npcap-sdk.zip
+          wget https://github.com/xfangfang/PPPwn_cpp/releases/download/1.0.0/npcap-sdk-1.13.zip -O npcap-sdk.zip
           unzip npcap-sdk.zip -d sdk
 
       - name: Build
