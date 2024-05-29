@@ -104,6 +104,7 @@ void WebPage::startExploit() {
     exploit->stop();
     if (exploitThread.joinable())
         exploitThread.join();
+    exploit->setWaitAfterPin(1);
     exploitThread = std::thread([this]() {
         return exploit->run();
     });

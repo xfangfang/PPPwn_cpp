@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
             "Use CPU for more precise sleep time (Only used when execution speed is too slow)" %
             option("-rs", "--real-sleep").set(real_sleep), \
             "start a web page" % option("--web").set(web_page), \
-            "url" % option("--url") & value("url", web_url)
+            "custom web page url (default: 0.0.0.0:7796)" % option("--url") & value("url", web_url)
             ) | \
             "list interfaces" % command("list").call(listInterfaces)
     );
