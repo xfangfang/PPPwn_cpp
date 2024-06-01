@@ -14,6 +14,7 @@
 
 #include "exploit.h"
 #include "web.h"
+Gateway * gateway = nullptr;
 
 std::vector<uint8_t> readBinary(const std::string &filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
@@ -112,10 +113,16 @@ static void signal_handler(int sig_num) {
     exit(sig_num);
 }
 
+void transferTraffic(const std::string& ps4_interface, const std::string& net_interface) {
+    std::cout << "[+] transfer network traffic" << std::endl;
+    gateway = new Gateway(ps4_interface, net_interface);
+    gateway->run();
+}
+
 int main(int argc, char *argv[]) {
     using namespace clipp;
     std::cout << "[+] PPPwn++ - PlayStation 4 PPPoE RCE by theflow" << std::endl;
-    std::string interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
+    std::string interface, net_interface, stage1 = "stage1/stage1.bin", stage2 = "stage2/stage2.bin";
     std::string web_url = "0.0.0.0:7796";
     int fw = 1100;
     int timeout = 0;
@@ -126,6 +133,7 @@ int main(int argc, char *argv[]) {
     bool no_wait_padi = false;
     bool web_page = false;
     bool real_sleep = false;
+    bool network = false;
 
     auto cli = (
             ("network interface" % required("-i", "--interface") & value("interface", interface), \
@@ -147,13 +155,22 @@ int main(int argc, char *argv[]) {
             "start a web page" % option("--web").set(web_page), \
             "custom web page url (default: 0.0.0.0:7796)" % option("--url") & value("url", web_url)
             ) | \
-            "list interfaces" % command("list").call(listInterfaces)
+            "list interfaces" % command("list").call(listInterfaces) | \
+            ("transfer network traffic" % command("network").set(network), \
+            "interface to the ps4" % required("--interface") & value("interface", interface), \
+            "interface to the internet" % required("--interface-net") & value("interface", net_interface)
+            )
     );
 
     auto result = parse(argc, argv, cli);
     if (!result) {
         std::cout << make_man_page(cli, "pppwn");
         return 1;
+    }
+
+    if (network) {
+        transferTraffic(interface, net_interface);
+        return 0;
     }
 
     auto offset = getFirmwareOffset(fw);
@@ -165,6 +182,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
               << " timeout=" << timeout << " wait-after-pin=" << wait_after_pin << " groom-delay=" << groom_delay
+              << " buffer-size= " << buffer_size
               << " auto-retry=" << (retry ? "on" : "off") << " no-wait-padi=" << (no_wait_padi ? "on" : "off")
               << " real_sleep=" << (real_sleep ? "on" : "off")
               << std::endl;

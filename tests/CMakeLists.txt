@@ -5,6 +5,7 @@ message(STATUS "Building exploit, ${PROJECT_NAME}")
 add_library(${PROJECT_NAME}_shared SHARED
         ${CMAKE_SOURCE_DIR}/src/exploit.cpp
         ${CMAKE_SOURCE_DIR}/src/packet.cpp
+        ${CMAKE_SOURCE_DIR}/src/gateway.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/extern.cpp)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}_shared PUBLIC ${APP_LINK_LIB})
