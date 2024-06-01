@@ -107,7 +107,7 @@ else ()
     endif ()
 endif ()
 
-add_library(${PROJECT_NAME}_static STATIC src/exploit.cpp src/packet.cpp)
+add_library(${PROJECT_NAME}_static STATIC src/exploit.cpp src/packet.cpp src/gateway.cpp)
 set_target_properties(${PROJECT_NAME}_static PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}_static PUBLIC ${APP_LINK_LIB})
 target_compile_options(${PROJECT_NAME}_static PUBLIC ${APP_BUILD_OPTIONS})

@@ -29,14 +29,8 @@
 #define STAGE2_PORT 9020
 
 #define PPP_IPCP_Option_IP 0x03
-
-const static std::string SOURCE_MAC = "41:41:41:41:41:41";
-const static std::string SOURCE_IPV4 = "41.41.41.41";
-const static std::string SOURCE_IPV6 = "fe80::4141:4141:4141:4141";
-
-const static std::string TARGET_IPV4 = "42.42.42.42";
-
-const static std::string BPF_FILTER = "(ip6) || (pppoed) || (pppoes && !ip)";
+#define PPP_IPCP_Option_DNS1 0x81
+#define PPP_IPCP_Option_DNS2 0x83
 
 class MyPPPoETagBuilder : public pcpp::PPPoEDiscoveryLayer::PPPoETagBuilder {
 public:
@@ -183,14 +177,15 @@ pcpp::Packet PacketBuilder::lcpAck(const pcpp::MacAddress &source_mac, const pcp
     return packet;
 }
 
-pcpp::Packet PacketBuilder::ipcpRequest(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac) {
+pcpp::Packet PacketBuilder::ipcpRequest(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac,
+                                        const std::string& source_ipv4) {
     auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOES);
     auto *pppoeLayer = new pcpp::PPPoESessionLayer(1, 1, SESSION_ID, PCPP_PPP_IPCP);
 
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    uint32_t ip = pcpp::IPv4Address(SOURCE_IPV4).toInt();
+    uint32_t ip = pcpp::IPv4Address(source_ipv4).toInt();
     for (int i = 0; i < 4; ++i) {
         data[i + 2] = (ip >> (i * 8)) & 0xFF;
     }
@@ -205,16 +200,33 @@ pcpp::Packet PacketBuilder::ipcpRequest(const pcpp::MacAddress &source_mac, cons
 }
 
 pcpp::Packet
-PacketBuilder::ipcpNak(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac, uint8_t id) {
+PacketBuilder::ipcpNak(const pcpp::MacAddress &source_mac, const pcpp::MacAddress &target_mac, uint8_t id,
+                       const std::string& target_ipv4, const std::string& dns1, const std::string& dns2) {
     auto *ether = new pcpp::EthLayer(source_mac, target_mac, PCPP_ETHERTYPE_PPPOES);
     auto *pppoeLayer = new pcpp::PPPoESessionLayer(1, 1, SESSION_ID, PCPP_PPP_IPCP);
 
     std::vector<uint8_t> data(6);
     data[0] = PPP_IPCP_Option_IP;
     data[1] = data.size();
-    uint32_t ip = pcpp::IPv4Address(TARGET_IPV4).toInt();
+    uint32_t ip = pcpp::IPv4Address(target_ipv4).toInt();
     for (int i = 0; i < 4; ++i) {
         data[i + 2] = (ip >> (i * 8)) & 0xFF;
+    }
+    if (!dns1.empty()) {
+        data.push_back(PPP_IPCP_Option_DNS1);
+        data.push_back(6);
+        uint32_t dns_int = pcpp::IPv4Address(dns1).toInt();
+        for (int i = 0; i < 4; ++i) {
+            data.push_back((dns_int >> (i * 8)) & 0xFF);
+        }
+    }
+    if (!dns2.empty()) {
+        data.push_back(PPP_IPCP_Option_DNS2);
+        data.push_back(6);
+        uint32_t dns_int = pcpp::IPv4Address(dns2).toInt();
+        for (int i = 0; i < 4; ++i) {
+            data.push_back((dns_int >> (i * 8)) & 0xFF);
+        }
     }
     pcpp::PayloadLayer *pppLayer = buildPPPLayer(pppoeLayer, CONF_NAK, id, data.data(), data.size());
 
