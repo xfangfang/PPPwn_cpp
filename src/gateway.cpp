@@ -248,7 +248,36 @@ void Gateway::run() {
                 tcpLayer->getTcpHeader()->portDst = htobe16(data->realPort);
                 tcpLayer->calculateChecksum(true);
                 ipv4Layer->computeCalculateFields();
-                self->dev->sendPacket(&newPacket);
+                if (newEthLayer.getLayerPayloadSize() < self->dev->getMtu()) {
+                    self->dev->sendPacket(&newPacket);
+                } else {
+                    uint64_t fragmentSize = self->dev->getMtu();
+                    uint64_t offset{};
+                    while (offset < ipv4Layer->getLayerPayloadSize()) {
+                        pcpp::Packet packetSlice;
+
+                        pcpp::EthLayer ether(newEthLayer);
+                        packetSlice.addLayer(&ether);
+
+                        pcpp::IPv4Layer ipLayerSlice(*ipv4Layer);
+                        ipLayerSlice.getIPv4Header()->fragmentOffset = htobe16(offset / 8) | htobe16(0x2000);
+                        packetSlice.addLayer(&ipLayerSlice);
+
+                        uint8_t *payload = ipv4Layer->getLayerPayload() + offset;
+                        uint64_t payloadSize = fragmentSize - ipLayerSlice.getHeaderLen();
+
+                        // last fragment
+                        if (offset + fragmentSize >= ipv4Layer->getLayerPayloadSize()) {
+                            ipLayerSlice.getIPv4Header()->fragmentOffset = htobe16(offset / 8) & htobe16(0x1FFF);
+                            payloadSize = ipv4Layer->getLayerPayloadSize() - offset;
+                        }
+                        pcpp::PayloadLayer payloadLayerSlice(payload, payloadSize, false);
+                        packetSlice.addLayer(&payloadLayerSlice);
+                        packetSlice.computeCalculateFields();
+                        offset += payloadSize;
+                        self->dev->sendPacket(&packetSlice);
+                    }
+                }
 
                 if (tcpLayer->getTcpHeader()->finFlag) {
                     self->portMap.removeMapping(tcpLayer->getDstPort());
