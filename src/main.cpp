@@ -126,6 +126,7 @@ int main(int argc, char *argv[]) {
     bool no_wait_padi = false;
     bool web_page = false;
     bool real_sleep = false;
+    bool old_ipv6 = false;
 
     auto cli = (
             ("network interface" % required("-i", "--interface") & value("interface", interface), \
@@ -142,6 +143,7 @@ int main(int argc, char *argv[]) {
             option("-bs", "--buffer-size") & integer("bytes", buffer_size), \
             "automatically retry when fails or timeout" % option("-a", "--auto-retry").set(retry), \
             "don't wait one more PADI before starting" % option("-nw", "--no-wait-padi").set(no_wait_padi), \
+            "Using the old ipv6 to exploit" % option("-old", "--old-ipv6").set(old_ipv6), \
             "Use CPU for more precise sleep time (Only used when execution speed is too slow)" %
             option("-rs", "--real-sleep").set(real_sleep), \
             "start a web page" % option("--web").set(web_page), \
@@ -165,6 +167,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "[+] args: interface=" << interface << " fw=" << fw << " stage1=" << stage1 << " stage2=" << stage2
               << " timeout=" << timeout << " wait-after-pin=" << wait_after_pin << " groom-delay=" << groom_delay
+              << " buffer-size=" << buffer_size << " old-ipv6=" << (old_ipv6 ? "on" : "off")
               << " auto-retry=" << (retry ? "on" : "off") << " no-wait-padi=" << (no_wait_padi ? "on" : "off")
               << " real_sleep=" << (real_sleep ? "on" : "off")
               << std::endl;
@@ -183,6 +186,7 @@ int main(int argc, char *argv[]) {
     exploit->setStage2(std::move(stage2_data));
     exploit->setTimeout(timeout);
     exploit->setWaitPADI(!no_wait_padi);
+    exploit->setOldIpv6(old_ipv6);
     exploit->setGroomDelay(groom_delay);
     exploit->setWaitAfterPin(wait_after_pin);
     exploit->setAutoRetry(retry);

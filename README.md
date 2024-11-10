@@ -51,6 +51,7 @@ pppwn --interface en0 --fw 1100 --stage1 "stage1.bin" --stage2 "stage2.bin" --ti
 - `-a` `--auto-retry`: automatically retry when fails or timeout
 - `-nw` `--no-wait-padi`: don't wait one more [PADI](https://en.wikipedia.org/wiki/Point-to-Point_Protocol_over_Ethernet#Client_to_server:_Initiation_(PADI)) before starting the exploit
 - `-rs` `--real-sleep`: use CPU for more precise sleep time (Only used when execution speed is too slow)
+- `-old` `--old-ipv6`: use previous IPv6 address to exploit (Only used when the exploit fails)
 - `--web`: use the web interface
 - `--url`: the url of the web interface (default: `0.0.0.0:7796`)
 

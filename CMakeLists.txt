@@ -130,7 +130,7 @@ if (BUILD_CLI)
     add_custom_command(
             OUTPUT ${CMAKE_BINARY_DIR}/static.c
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND ${ZIG} cc -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
+            COMMAND ${ZIG} cc ${CMAKE_C_FLAGS} -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
             COMMAND ${CMAKE_BINARY_DIR}/pack web/*.html web/*.ttf > ${CMAKE_BINARY_DIR}/static.c
             DEPENDS web/index.html
     )
