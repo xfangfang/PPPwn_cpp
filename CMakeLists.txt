@@ -131,7 +131,7 @@ if (BUILD_CLI)
             OUTPUT ${CMAKE_BINARY_DIR}/static.c
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND ${ZIG} cc ${CMAKE_C_FLAGS} -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
-            COMMAND ${CMAKE_BINARY_DIR}/pack web/*.html web/*.ttf > ${CMAKE_BINARY_DIR}/static.c
+            COMMAND ${CMAKE_BINARY_DIR}/pack web/index.html web/IBMPlexMono-Regular.ttf > ${CMAKE_BINARY_DIR}/static.c
             DEPENDS web/index.html
     )
 
